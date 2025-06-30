@@ -1,7 +1,0 @@
-=== GENDER CLASSIFICATION MODEL TESTING ===
-Model path: checkpoints/gender_model.pt
-Data directory: data/facecom/Task_A/
-Output directory: test_results_gender/
-Using device: mps
-Loading model...
-❌ ERROR: Model file not found: checkpoints/gender_model.pt
