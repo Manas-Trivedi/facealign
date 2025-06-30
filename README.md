@@ -107,7 +107,7 @@ python train_b.py
 
 #### Testing and Evaluation
 ```bash
-# Run all tests (automated test runner)
+# Run comprehensive tests for both models (automated)
 python run_all_tests.py
 
 # Individual comprehensive tests
@@ -215,8 +215,9 @@ The models are evaluated using the specified competition metrics:
 - **Task B Weight**: 70% (Face Recognition)
 
 ### Testing Methodology
-- **Comprehensive Analysis**: Each test script provides detailed performance metrics, threshold analysis, and visualization
-- **Automated Testing**: `run_all_tests.py` provides quick validation across both tasks
+- **Automated Testing**: `run_all_tests.py` executes comprehensive analysis for both tasks
+- **Individual Testing**: Separate test scripts for detailed analysis and debugging
+- **Performance Metrics**: Detailed evaluation with threshold analysis and visualization
 - **Demo Scripts**: Interactive demonstration of model predictions with visual feedback
 
 ## Technical Highlights

@@ -364,7 +364,7 @@ def save_results(results, output_dir, logger):
 
 def main():
     parser = argparse.ArgumentParser(description='Test Face Recognition Model')
-    parser.add_argument('--model_path', type=str, default='models/final_model.pth',
+    parser.add_argument('--model_path', type=str, default='checkpoints/final_model.pth',
                         help='Path to the trained model')
     parser.add_argument('--data_dir', type=str, default='data/facecom/Task_B/',
                         help='Path to data directory')
