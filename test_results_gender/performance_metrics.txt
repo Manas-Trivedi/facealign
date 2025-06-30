@@ -1,0 +1,12 @@
+Gender Classification Model Performance Summary
+==================================================
+
+Overall Accuracy: 0.9979
+Overall Precision: 0.9924
+Overall Recall: 0.9975
+Overall F1-Score: 0.9949
+ROC AUC: 1.0000
+
+Per-Class Metrics:
+Male   - Precision: 0.9993, Recall: 0.9980, F1: 0.9987
+Female - Precision: 0.9924, Recall: 0.9975, F1: 0.9949

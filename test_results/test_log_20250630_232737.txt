@@ -1,0 +1,84 @@
+=== FACE RECOGNITION MODEL TESTING ===
+Model path: models/final_model.pth
+Data directory: data/facecom/Task_B/
+Output directory: test_results/
+Using device: mps
+Loading model...
+✅ Model loaded successfully
+Loading validation dataset...
+Gallery size: 422
+Positive queries available: 3376
+Negative queries available: 15408
+=== COMPREHENSIVE VALIDATION ===
+Computing gallery embeddings...
+Computing embeddings for 422 images in batches of 32
+Gallery: 422 embeddings computed
+=== EMBEDDING ANALYSIS ===
+Embedding L2 norms - Mean: 1.0000, Std: 0.0000
+NaN values: 0, Inf values: 0
+Embedding values - Min: -0.2425, Max: 0.2425
+Embedding values - Mean: -0.0020, Std: 0.0625
+Pairwise similarities - Min: -0.7983, Max: 0.9950
+Pairwise similarities - Mean: 0.1024, Std: 0.3842
+✅ Embedding analysis completed successfully
+Creating 500 validation queries...
+Computing embeddings for 500 images in batches of 32
+Queries: 500 embeddings computed
+=== EMBEDDING ANALYSIS ===
+Embedding L2 norms - Mean: 1.0000, Std: 0.0000
+NaN values: 0, Inf values: 0
+Embedding values - Min: -0.2405, Max: 0.2342
+Embedding values - Mean: -0.0012, Std: 0.0625
+Pairwise similarities - Min: -0.8354, Max: 0.9999
+Pairwise similarities - Mean: 0.0287, Std: 0.3913
+✅ Embedding analysis completed successfully
+Computing similarities between queries and gallery...
+=== SIMILARITY ANALYSIS ===
+Similarity range: 0.6066 - 1.0000
+Similarity mean: 0.9462 ± 0.0870
+Positive pairs similarity: 0.9801 ± 0.0265
+Negative pairs similarity: 0.9123 ± 0.1101
+Similarity gap: 0.0678
+
+=== THRESHOLD ANALYSIS ===
+Threshold | Accuracy | Precision | Recall | F1-Score
+--------------------------------------------------
+   0.950 |   0.6740 |    0.6225 | 0.8840 |   0.7306
+   0.960 |   0.6860 |    0.6422 | 0.8400 |   0.7279
+   0.970 |   0.7020 |    0.6810 | 0.7600 |   0.7183
+   0.975 |   0.7200 |    0.7132 | 0.7360 |   0.7244
+   0.980 |   0.7300 |    0.7578 | 0.6760 |   0.7146
+   0.985 |   0.7340 |    0.8305 | 0.5880 |   0.6885
+   0.990 |   0.7140 |    0.8905 | 0.4880 |   0.6305
+   0.992 |   0.7100 |    0.9412 | 0.4480 |   0.6070
+   0.994 |   0.6900 |    0.9358 | 0.4080 |   0.5682
+   0.995 |   0.6760 |    0.9681 | 0.3640 |   0.5291
+   0.996 |   0.6600 |    1.0000 | 0.3200 |   0.4848
+   0.997 |   0.6360 |    1.0000 | 0.2720 |   0.4277
+   0.998 |   0.6140 |    1.0000 | 0.2280 |   0.3713
+   0.999 |   0.5900 |    1.0000 | 0.1800 |   0.3051
+   1.000 |   0.5780 |    1.0000 | 0.1560 |   0.2699
+
+🏆 Best threshold: 0.95 with F1: 0.7306
+
+=== DETAILED ANALYSIS (Threshold: 0.95) ===
+Confusion Matrix:
+  True Negatives:   116  |  False Positives:  134
+  False Negatives:   29  |  True Positives:   221
+Validation split accuracy: 0.8840, F1: 0.9384
+Train split accuracy: 0.4640, F1: 0.0000
+
+=== ROC ANALYSIS ===
+ROC AUC: 0.8186
+
+🎉 Testing completed in 5.9 seconds
+🏆 Best performance: F1=0.7306 at threshold=0.95
+📊 ROC AUC: 0.8186
+=== SAVING RESULTS ===
+Threshold analysis saved to: test_results/threshold_analysis.txt
+Performance plots saved to: test_results/performance_analysis.png
+Similarity distribution plots saved to: test_results/similarity_distribution.png
+✅ All results saved successfully
+
+📝 Complete log saved to: test_results/test_log_20250630_232737.txt
+✅ Testing completed successfully!
