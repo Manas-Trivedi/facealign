@@ -272,6 +272,29 @@ class AlignmentUniformityLoss(nn.Module):
 
         return total_loss
 
+class ContrastiveLoss(nn.Module):
+    """Contrastive Loss for better positive/negative separation"""
+    def __init__(self, margin=1.0, temperature=0.1):
+        super(ContrastiveLoss, self).__init__()
+        self.margin = margin
+        self.temperature = temperature
+
+    def forward(self, anchor, positive, negative):
+        # Normalize embeddings
+        anchor = F.normalize(anchor, p=2, dim=1)
+        positive = F.normalize(positive, p=2, dim=1)
+        negative = F.normalize(negative, p=2, dim=1)
+
+        # Positive pairs - minimize distance
+        pos_sim = F.cosine_similarity(anchor, positive, dim=1)
+        pos_loss = (1 - pos_sim).mean()
+
+        # Negative pairs - maximize distance (with margin)
+        neg_sim = F.cosine_similarity(anchor, negative, dim=1)
+        neg_loss = F.relu(neg_sim - self.margin).mean()
+
+        return pos_loss + neg_loss
+
 def cosine_similarity(embedding1, embedding2):
     """Compute cosine similarity between two embeddings"""
     return F.cosine_similarity(embedding1, embedding2, dim=1)

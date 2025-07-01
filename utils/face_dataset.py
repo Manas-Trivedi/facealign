@@ -87,11 +87,85 @@ class FaceDataset(Dataset):
         return image, identity
 
 class TripletDataset(FaceDataset):
-    def __init__(self, data_dir, split='train', transform=None):
+    def __init__(self, data_dir, split='train', transform=None, hard_negative_prob=0.5, model=None):
         super().__init__(data_dir, split, transform)
+        self.hard_negative_prob = hard_negative_prob  # Probability of selecting hard negatives
+        self.model = model  # Model for computing embeddings (optional)
+        self.negative_cache = {}  # Cache hard negatives
+
+    def set_model(self, model):
+        """Set the model for hard negative mining"""
+        self.model = model
+
+    def _get_hard_negative(self, anchor_img, anchor_identity):
+        """Get a hard negative using the current model"""
+        if self.model is None:
+            # Fallback to random negative
+            return self._get_random_negative(anchor_identity)
+
+        self.model.eval()
+        with torch.no_grad():
+            # Get anchor embedding
+            if isinstance(anchor_img, torch.Tensor):
+                anchor_tensor = anchor_img.unsqueeze(0)
+            else:
+                # Convert PIL image to tensor if needed
+                from torchvision import transforms
+                to_tensor = transforms.ToTensor()
+                anchor_tensor = to_tensor(anchor_img).unsqueeze(0)
+
+            if torch.cuda.is_available():
+                anchor_tensor = anchor_tensor.cuda()
+            elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+                anchor_tensor = anchor_tensor.to('mps')
+
+            anchor_emb = self.model(anchor_tensor).cpu()
+
+            # Sample candidates from different identities
+            candidate_identities = [id for id in self.unique_identities if id != anchor_identity]
+            candidates = random.sample(candidate_identities, min(20, len(candidate_identities)))
+
+            similarities = []
+            candidate_imgs = []
+
+            for neg_identity in candidates:
+                neg_path = random.choice(self.identity_to_images[neg_identity])
+                neg_img = self._load_image(neg_path)
+                candidate_imgs.append((neg_img, neg_path))
+
+                # Get negative embedding
+                if isinstance(neg_img, torch.Tensor):
+                    neg_tensor = neg_img.unsqueeze(0)
+                else:
+                    # Convert PIL image to tensor if needed
+                    from torchvision import transforms
+                    to_tensor = transforms.ToTensor()
+                    neg_tensor = to_tensor(neg_img).unsqueeze(0)
+
+                if torch.cuda.is_available():
+                    neg_tensor = neg_tensor.cuda()
+                elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+                    neg_tensor = neg_tensor.to('mps')
+
+                neg_emb = self.model(neg_tensor).cpu()
+
+                # Compute similarity (higher = harder negative)
+                sim = torch.nn.functional.cosine_similarity(anchor_emb, neg_emb, dim=1).item()
+                similarities.append(sim)
+
+            # Select the hardest negative (highest similarity)
+            hardest_idx = max(range(len(similarities)), key=lambda i: similarities[i])
+            return candidate_imgs[hardest_idx][0]
+
+    def _get_random_negative(self, anchor_identity):
+        """Get a random negative (fallback method)"""
+        negative_identity = random.choice([id for id in self.unique_identities
+                                         if id != anchor_identity])
+        negative_path = random.choice(self.identity_to_images[negative_identity])
+        return self._load_image(negative_path)
 
     def __getitem__(self, idx):
-        """Generate a triplet: anchor, positive, negative"""
+        """Generate a triplet: anchor, positive, negative with hard negative mining"""
         # Select anchor
         anchor_path = self.images[idx]
         anchor_identity = self.identities[idx]
@@ -107,11 +181,11 @@ class TripletDataset(FaceDataset):
             positive_path = random.choice(positive_candidates)
         positive_img = self._load_image(positive_path)
 
-        # Select negative (different identity)
-        negative_identity = random.choice([id for id in self.unique_identities
-                                         if id != anchor_identity])
-        negative_path = random.choice(self.identity_to_images[negative_identity])
-        negative_img = self._load_image(negative_path)
+        # Select negative with hard mining
+        if random.random() < self.hard_negative_prob:
+            negative_img = self._get_hard_negative(anchor_img, anchor_identity)
+        else:
+            negative_img = self._get_random_negative(anchor_identity)
 
         return anchor_img, positive_img, negative_img
 

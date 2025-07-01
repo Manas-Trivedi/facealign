@@ -129,8 +129,13 @@ def train_epoch(model, dataloader, criterion, optimizer, device, debug_training=
             with torch.no_grad():
                 pos_dist = torch.nn.functional.pairwise_distance(anchor_emb, positive_emb, p=2)
                 neg_dist = torch.nn.functional.pairwise_distance(anchor_emb, negative_emb, p=2)
+                pos_sim = cosine_similarity(anchor_emb, positive_emb)
+                neg_sim = cosine_similarity(anchor_emb, negative_emb)
+
                 pos_distances.extend(pos_dist.cpu().tolist())
                 neg_distances.extend(neg_dist.cpu().tolist())
+
+                print(f"  Batch {batch_idx}: Pos sim: {pos_sim.mean():.4f}, Neg sim: {neg_sim.mean():.4f}")
 
         # Backward pass
         loss.backward()
@@ -156,15 +161,15 @@ def main():
     parser = argparse.ArgumentParser(description='Train Face Recognition Model')
     parser.add_argument('--data_dir', type=str, default='data/facecom/Task_B/',
                         help='Path to data directory')
-    parser.add_argument('--epochs', type=int, default=50,
+    parser.add_argument('--epochs', type=int, default=25,
                         help='Number of epochs to train')
-    parser.add_argument('--batch_size', type=int, default=32,
+    parser.add_argument('--batch_size', type=int, default=16,
                         help='Batch size')
     parser.add_argument('--lr', type=float, default=1e-4,
                         help='Learning rate')
-    parser.add_argument('--embedding_dim', type=int, default=256,
+    parser.add_argument('--embedding_dim', type=int, default=512,
                         help='Embedding dimension')
-    parser.add_argument('--margin', type=float, default=2.0,
+    parser.add_argument('--margin', type=float, default=0.8,
                         help='Triplet loss margin')
     parser.add_argument('--backbone', type=str, default='resnet18',
                         choices=['resnet18', 'resnet34', 'resnet50'],
@@ -195,7 +200,7 @@ def main():
     train_transform = get_transforms(train=True)
     val_transform = get_transforms(train=False)
 
-    train_dataset = TripletDataset(args.data_dir, 'train', train_transform)
+    train_dataset = TripletDataset(args.data_dir, 'train', train_transform, hard_negative_prob=0.0)
     val_dataset = ValidationDataset(args.data_dir, transform=val_transform)
 
     print(f"Train dataset size: {len(train_dataset)}")
@@ -234,6 +239,12 @@ def main():
 
     for epoch in range(args.epochs):
         print(f"\nEpoch {epoch+1}/{args.epochs}")
+
+        # Enable hard negative mining after 3 epochs
+        if epoch >= 3:
+            train_dataset.hard_negative_prob = 0.5  # 50% hard negatives
+            train_dataset.set_model(model)
+            print("🔥 Hard negative mining enabled")
 
         # Train
         start_time = time.time()
