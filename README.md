@@ -20,7 +20,7 @@ This solution addresses the challenge of maintaining robust performance in face 
 
 ### 2. Robust Architecture Choices
 - **Task A**: ResNet34 backbone with custom dropout-regularized classifier
-- **Task B**: Embedding-based Siamese network with L2-normalized 256D representations
+- **Task B**: Embedding-based Siamese network with L2-normalized 512D representations
 - **Threshold Optimization**: Data-driven threshold selection for optimal precision-recall balance
 
 ### 3. Advanced Training Strategies
