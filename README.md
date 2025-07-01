@@ -68,16 +68,19 @@ Threshold-based Decision
 ## Performance Analysis
 
 ### Task A: Gender Classification
-The gender classification model demonstrates exceptional robustness, achieving near-perfect performance even under adverse visual conditions:
-- **Overall Accuracy**: 99.79%
-- **Overall Precision**: 99.24%
-- **Overall Recall**: 99.75%
-- **Overall F1-Score**: 99.49%
-- **ROC AUC**: 100.00%
+The gender classification model demonstrates strong robustness, achieving high performance under adverse visual conditions:
 
-**Per-Class Performance:**
-- **Male**: Precision: 99.93%, Recall: 99.80%, F1: 99.87%
-- **Female**: Precision: 99.24%, Recall: 99.75%, F1: 99.49%
+- **Overall Accuracy**: 96.21%
+- **Overall Precision**: 96.84%
+- **Overall Recall**: 87.62%
+- **Overall F1-Score**: 92.00%
+
+ADDITIONAL METRICS:
+ROC AUC: 0.9933
+
+PER-CLASS METRICS:
+Male   - Precision: 0.9602, Recall: 0.9905, F1: 0.9752
+Female - Precision: 0.9684, Recall: 0.8762, F1: 0.9200
 
 ### Task B: Face Recognition
 Face recognition under adverse conditions presents significantly greater complexity, with the embedding-based approach achieving competitive results:
