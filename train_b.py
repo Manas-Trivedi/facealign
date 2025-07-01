@@ -174,9 +174,9 @@ def main():
     parser.add_argument('--backbone', type=str, default='resnet18',
                         choices=['resnet18', 'resnet34', 'resnet50'],
                         help='Backbone architecture')
-    parser.add_argument('--threshold', type=float, default=0.9995,
+    parser.add_argument('--threshold', type=float, default=0.92,
                         help='Similarity threshold for validation')
-    parser.add_argument('--save_dir', type=str, default='models/',
+    parser.add_argument('--save_dir', type=str, default='checkpoints/',
                         help='Directory to save models')
     parser.add_argument('--num_workers', type=int, default=4,
                         help='Number of dataloader workers')
@@ -246,6 +246,15 @@ def main():
             train_dataset.set_model(model)
             print("🔥 Hard negative mining enabled")
 
+            # Recreate dataloader with num_workers=0 to avoid MPS multiprocessing issues
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=args.batch_size,
+                shuffle=True,
+                num_workers=0,  # Disable multiprocessing for hard negative mining
+                pin_memory=False
+            )
+
         # Train
         start_time = time.time()
         debug_training = (epoch == 0)  # Debug first epoch
@@ -287,7 +296,7 @@ def main():
 
     # Final evaluation with different thresholds
     print("\nFinal evaluation with threshold tuning...")
-    thresholds = [0.98, 0.985, 0.99, 0.992, 0.994, 0.995, 0.996, 0.997, 0.998, 0.999]
+    thresholds = [0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99]
     best_threshold = args.threshold
     best_final_f1 = 0.0
 
