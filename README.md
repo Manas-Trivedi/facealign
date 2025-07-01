@@ -1,190 +1,34 @@
 # Robust Face Recognition and Gender Classification under Adverse Visual Conditions
 
 ## COMSYS Hackathon-5, 2025 Submission
+**Author**: Manas Trivedi
 
-### Team Information
-- **Author**: Manas Trivedi
-- **Theme**: Robust Face Recognition and Gender Classification under Adverse Visual Conditions
-- **Organization**: COMSYS Educational Trust, Kolkata
+## Solution Overview
 
-## Project Overview
+This solution addresses the challenge of maintaining robust performance in face recognition and gender classification under adverse visual conditions including motion blur, overexposure, fog, rain, low light, and uneven lighting.
 
-This project implements a comprehensive solution for two challenging computer vision tasks under adverse visual conditions:
+**Tasks:**
+- **Task A**: Gender Classification (Binary) - 99.79% accuracy achieved
+- **Task B**: Face Recognition (Identity Matching) - 72.00% accuracy with embedding-based approach
 
-1. **Task A**: Gender Classification (Binary Classification) - Male/Female prediction
-2. **Task B**: Face Recognition (Multi-class Classification) - Person identity matching using embeddings
+## Key Innovations
 
-The solution is designed to handle real-world degradations including motion blur, overexposed scenes, foggy conditions, rainy weather simulation, low light visibility, and uneven lighting.
+### 1. Advanced Loss Function Design
+- **Alignment-Uniformity Loss**: Novel combination of triplet loss with alignment and uniformity objectives for robust embedding learning
+- **Weighted Cross-Entropy**: Handles class imbalance in gender classification with computed class weights
+- **Numerical Stability**: MPS/GPU-compatible implementations with NaN handling and gradient clipping
 
-## Dataset: FACECOM
+### 2. Robust Architecture Choices
+- **Task A**: ResNet34 backbone with custom dropout-regularized classifier
+- **Task B**: Embedding-based Siamese network with L2-normalized 256D representations
+- **Threshold Optimization**: Data-driven threshold selection for optimal precision-recall balance
 
-**FACECOM (Face Attributes in Challenging Environments)** is a purpose-built dataset with over 5,000 face images captured or synthesized under challenging visual conditions.
+### 3. Advanced Training Strategies
+- **Hard Negative Mining**: Intelligent triplet selection for face recognition
+- **Decorrelated Batch Normalization**: Prevents dimensional collapse in embedding space
+- **Class-Balanced Sampling**: Ensures fair representation during training
 
-### Dataset Structure
-```
-data/facecom/
-├── Task_A/                 # Gender Classification
-│   ├── train/
-│   │   ├── male/          # Male face images
-│   │   └── female/        # Female face images
-│   └── val/
-│       ├── male/
-│       └── female/
-└── Task_B/                 # Face Recognition
-    ├── train/              # Identity folders (001_frontal, 002_frontal, etc.)
-    └── val/                # Validation identity folders
-```
-
-## Architecture
-
-### Task A: Gender Classification Model
-- **Backbone**: ResNet34 (pretrained on ImageNet)
-- **Architecture**: Feature extraction + Custom classifier with dropout
-- **Output**: Binary classification (Male/Female)
-- **Loss Function**: Weighted Cross-Entropy (to handle class imbalance)
-
-### Task B: Face Recognition Model
-- **Backbone**: ResNet18/34/50 (configurable, pretrained)
-- **Architecture**: Siamese Network with embedding learning
-- **Embedding Dimension**: 256D normalized embeddings
-- **Loss Functions**:
-  - Triplet Loss with margin
-  - Alignment Loss (pulls positive pairs together)
-  - Uniformity Loss (spreads embeddings uniformly on hypersphere)
-- **Matching Strategy**: Cosine similarity with threshold-based decision
-
-## Key Features
-
-### Advanced Loss Functions
-- **Alignment-Uniformity Loss**: Combines triplet loss with alignment and uniformity objectives
-- **Decorrelated Batch Normalization**: Prevents dimensional collapse in embeddings
-- **Numerical Stability**: Robust implementations for MPS/GPU compatibility
-
-### Data Handling
-- **Class Balancing**: Weighted sampling for gender classification
-- **Triplet Mining**: Hard negative mining for face recognition
-- **Data Augmentation**: Comprehensive transformations for robustness
-
-### Evaluation Metrics
-- **Task A**: Accuracy, Precision, Recall, F1-Score, ROC-AUC
-- **Task B**: Top-1 Accuracy, Macro-averaged F1-Score, Threshold Analysis
-
-## Installation and Setup
-
-### Requirements
-```bash
-pip install -r requirements.txt
-```
-
-### Dependencies
-- torch
-- torchvision
-- pillow
-- matplotlib
-- scikit-learn
-- tqdm
-
-### Hardware Support
-- CUDA GPU (recommended)
-- Apple Silicon MPS
-- CPU fallback
-
-## Usage
-
-### Training
-
-#### Task A - Gender Classification
-```bash
-python train_a.py
-```
-
-#### Task B - Face Recognition
-```bash
-python train_b.py
-```
-
-### Testing and Evaluation
-
-#### Official Competition Evaluation (For Judges)
-```bash
-# Quick official evaluation (recommended for judges)
-python run_evaluation.py
-
-# Alternative: Use unified test runner
-python run_all_tests.py --official     # Official evaluation only
-python run_all_tests.py --both         # Both comprehensive and official
-```
-
-**Evaluation Metrics:**
-- **Task A**: Accuracy | Precision | Recall | F1-Score
-- **Task B**: Top-1 Accuracy | Macro-averaged F1-Score
-
-#### Comprehensive Testing and Analysis
-```bash
-# Comprehensive analysis (default)
-python run_all_tests.py
-
-# Individual comprehensive tests
-python test_gender_model.py          # Task A comprehensive testing
-python test_model.py                 # Task B comprehensive testing
-```
-
-#### Demo Predictions
-```bash
-# Gender classification demo
-python demo_gender.py
-
-# Face recognition demo
-python show_predictions.py
-```
-
-## Model Performance
-
-### Task A: Gender Classification
-- **Overall Accuracy**: 99.79%
-- **Overall Precision**: 99.24%
-- **Overall Recall**: 99.75%
-- **Overall F1-Score**: 99.49%
-- **ROC AUC**: 100.00%
-
-#### Per-Class Performance
-- **Male**: Precision: 99.93%, Recall: 99.80%, F1: 99.87%
-- **Female**: Precision: 99.24%, Recall: 99.75%, F1: 99.49%
-
-### Task B: Face Recognition
-- **Optimal Threshold**: 0.975
-- **Best Accuracy**: 72.00%
-- **Best F1-Score**: 72.44%
-- **Precision at Optimal**: 71.32%
-
-## File Structure
-
-```
-facealign/
-├── models/
-│   ├── gender_model.py        # Gender classification model
-│   └── face_model.py          # Face embedding model
-├── utils/
-│   ├── gender_dataset.py      # Gender dataset utilities
-│   └── face_dataset.py        # Face dataset utilities
-├── checkpoints/
-│   ├── gender_model.pt        # Trained gender model weights
-│   └── final_model.pth        # Trained face recognition weights
-├── test_results/              # Face recognition test outputs
-├── test_results_gender/       # Gender classification test outputs
-├── outputs/                   # Generated outputs and visualizations
-├── train_a.py                 # Task A training script
-├── train_b.py                 # Task B training script
-├── test_gender_model.py       # Gender classification testing & analysis
-├── test_model.py              # Face recognition testing & analysis
-├── run_evaluation.py          # Official competition evaluation suite
-├── demo_gender.py             # Gender classification demo
-├── show_predictions.py        # Face recognition demo
-├── run_all_tests.py          # Automated test runner
-└── requirements.txt          # Project dependencies
-```
-
-## Model Architecture Diagrams
+## Model Architecture
 
 ### Task A: Gender Classification
 ```
@@ -214,44 +58,87 @@ Cosine Similarity Matching
 Threshold-based Decision
 ```
 
-## Key Innovations
+## Performance Results
 
-1. **Robust Loss Design**: Combination of triplet, alignment, and uniformity losses
-2. **Numerical Stability**: MPS-compatible implementations with NaN handling
-3. **Threshold Optimization**: Comprehensive analysis for optimal decision boundaries
-4. **Class Balancing**: Weighted training to handle dataset imbalances
-5. **Comprehensive Evaluation**: Multi-metric analysis with visualization
+### Task A: Gender Classification
+- **Overall Accuracy**: 99.79%
+- **Overall Precision**: 99.24%
+- **Overall Recall**: 99.75%
+- **Overall F1-Score**: 99.49%
+- **ROC AUC**: 100.00%
 
-## Evaluation Protocol
+**Per-Class Performance:**
+- **Male**: Precision: 99.93%, Recall: 99.80%, F1: 99.87%
+- **Female**: Precision: 99.24%, Recall: 99.75%, F1: 99.49%
 
-The models are evaluated using the specified competition metrics:
-- **Task A Weight**: 30% (Gender Classification)
-- **Task B Weight**: 70% (Face Recognition)
+### Task B: Face Recognition
+- **Optimal Threshold**: 0.975
+- **Best Accuracy**: 72.00%
+- **Best F1-Score**: 72.44%
+- **Precision at Optimal**: 71.32%
 
-### Official Competition Evaluation
-- **For Judges**: Use `python run_evaluation.py` for standardized evaluation
-- **Output**: Comprehensive reports with official metrics and visualizations
-- **Format**: Timestamped results with detailed analysis and summary reports
+## Quick Start
 
-### Testing Methodology
-- **Competition Evaluation**: `run_evaluation.py` generates official metric reports for judges
-- **Automated Testing**: `run_all_tests.py` executes comprehensive analysis for both tasks
-- **Individual Testing**: Separate test scripts for detailed analysis and debugging
-- **Performance Metrics**: Detailed evaluation with threshold analysis and visualization
-- **Demo Scripts**: Interactive demonstration of model predictions with visual feedback
+### Installation
+```bash
+pip install -r requirements.txt
+```
 
-## Technical Highlights
+### Official Evaluation (For Judges)
+```bash
+python run_evaluation.py
+```
+This generates comprehensive evaluation reports with all required metrics for both tasks.
 
+### Training Models
+```bash
+# Task A - Gender Classification
+python train_a.py
+
+# Task B - Face Recognition
+python train_b.py
+```
+
+### Individual Testing
+```bash
+# Comprehensive analysis
+python run_all_tests.py
+
+# Task-specific testing
+python test_gender_model.py    # Task A analysis
+python test_model.py          # Task B analysis
+```
+
+## Technical Approach
+
+### Problem Analysis
+The core challenge lies in maintaining consistent performance across diverse visual degradations. Traditional approaches fail because they rely on idealized training conditions. Our solution addresses this through:
+
+1. **Robust Feature Learning**: Pretrained ResNet backbones provide strong initial representations
+2. **Adaptive Loss Design**: Custom loss functions that explicitly handle adversarial conditions
+3. **Embedding-Based Matching**: Face recognition as similarity learning rather than classification
+4. **Threshold Optimization**: Data-driven decision boundaries for optimal performance
+
+### Implementation Highlights
 - **Cross-platform Compatibility**: Supports CUDA, MPS, and CPU
-- **Robust Training**: Early stopping, learning rate scheduling, gradient clipping
-- **Comprehensive Logging**: Detailed training and testing logs
-- **Visualization**: Performance plots and analysis charts
+- **Numerical Stability**: Robust implementations with gradient clipping and NaN handling
 - **Reproducible Results**: Fixed random seeds and deterministic operations
+- **Comprehensive Logging**: Detailed training and evaluation tracking
 
-## Repository Structure
+## Code Structure
+```
+models/                    # Model architectures
+├── gender_model.py       # Task A model
+└── face_model.py         # Task B model
 
-All code is well-documented, modular, and follows best practices for deep learning projects. The implementation handles edge cases, provides comprehensive error checking, and includes extensive logging for debugging and analysis.
+utils/                    # Dataset utilities
+├── gender_dataset.py    # Task A data handling
+└── face_dataset.py      # Task B data handling
 
-## Contact
-
-For questions or clarifications regarding this implementation, please refer to the competition guidelines or contact the organizing committee at comsyshackathon5@gmail.com.
+train_a.py               # Gender classification training
+train_b.py               # Face recognition training
+test_gender_model.py     # Task A evaluation
+test_model.py            # Task B evaluation
+run_evaluation.py        # Official competition evaluation
+checkpoints/             # Trained model weights
+```

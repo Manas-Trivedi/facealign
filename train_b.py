@@ -124,19 +124,6 @@ def train_epoch(model, dataloader, criterion, optimizer, device, debug_training=
         # Compute loss
         loss = criterion(anchor_emb, positive_emb, negative_emb)
 
-        # Debug: track distances
-        if debug_training and batch_idx == 0:
-            with torch.no_grad():
-                pos_dist = torch.nn.functional.pairwise_distance(anchor_emb, positive_emb, p=2)
-                neg_dist = torch.nn.functional.pairwise_distance(anchor_emb, negative_emb, p=2)
-                pos_sim = cosine_similarity(anchor_emb, positive_emb)
-                neg_sim = cosine_similarity(anchor_emb, negative_emb)
-
-                pos_distances.extend(pos_dist.cpu().tolist())
-                neg_distances.extend(neg_dist.cpu().tolist())
-
-                print(f"  Batch {batch_idx}: Pos sim: {pos_sim.mean():.4f}, Neg sim: {neg_sim.mean():.4f}")
-
         # Backward pass
         loss.backward()
         optimizer.step()
