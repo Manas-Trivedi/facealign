@@ -34,6 +34,19 @@ def setup_logging(log_file):
     )
     return logging.getLogger(__name__)
 
+def log_task_evaluation_criteria(logger):
+    """Log the official evaluation criteria for Task B"""
+    logger.info("=" * 80)
+    logger.info("TASK B - FACE RECOGNITION")
+    logger.info("=" * 80)
+    logger.info("Objective: Assign each face image to a correct person identity")
+    logger.info("           from a known set of individuals.")
+    logger.info("")
+    logger.info("OFFICIAL EVALUATION METRICS:")
+    logger.info("  • Top-1 Accuracy      - Percentage of correctly identified faces")
+    logger.info("  • Macro-averaged F1   - F1-Score averaged across all identities")
+    logger.info("=" * 80)
+
 def compute_embeddings_batch(model, images, device, batch_size=32):
     """Compute embeddings for a list of images with batch processing"""
     model.eval()
@@ -185,9 +198,12 @@ def comprehensive_validation(model, val_dataset, device, thresholds, num_queries
 
     # Compute metrics for all thresholds
     results = []
-    logger.info("\n=== THRESHOLD ANALYSIS ===")
-    logger.info("Threshold | Accuracy | Precision | Recall | F1-Score")
-    logger.info("-" * 50)
+    logger.info("\n" + "=" * 80)
+    logger.info("OFFICIAL TASK B EVALUATION RESULTS")
+    logger.info("=" * 80)
+    logger.info("📊 THRESHOLD ANALYSIS FOR FACE RECOGNITION:")
+    logger.info("Threshold | Top-1 Acc | Precision | Recall | F1-Score")
+    logger.info("-" * 60)
 
     best_f1 = 0.0
     best_threshold = thresholds[0]
@@ -200,14 +216,18 @@ def comprehensive_validation(model, val_dataset, device, thresholds, num_queries
         recall = recall_score(query_labels, predictions, average='binary', zero_division=0)
         f1 = f1_score(query_labels, predictions, average='binary', zero_division=0)
 
+        # Calculate macro-averaged F1 (required for Task B)
+        macro_f1 = f1_score(query_labels, predictions, average='macro', zero_division=0)
+
         logger.info(f"{thresh:8.3f} | {accuracy:8.4f} | {precision:9.4f} | {recall:6.4f} | {f1:8.4f}")
 
         results.append({
             'threshold': thresh,
-            'accuracy': accuracy,
+            'top1_accuracy': accuracy,  # Task B: Top-1 Accuracy
             'precision': precision,
             'recall': recall,
-            'f1': f1
+            'f1': f1,
+            'macro_f1': macro_f1  # Task B: Macro-averaged F1
         })
 
         if f1 > best_f1:
@@ -215,6 +235,12 @@ def comprehensive_validation(model, val_dataset, device, thresholds, num_queries
             best_threshold = thresh
 
     logger.info(f"\n🏆 Best threshold: {best_threshold} with F1: {best_f1:.4f}")
+
+    # Log official Task B metrics for best threshold
+    best_result = next((r for r in results if r['threshold'] == best_threshold), results[-1])
+    logger.info(f"\n📊 OFFICIAL TASK B METRICS (Threshold: {best_threshold}):")
+    logger.info(f"   Top-1 Accuracy:      {best_result['top1_accuracy']:.4f} ({best_result['top1_accuracy']*100:.2f}%)")
+    logger.info(f"   Macro-averaged F1:   {best_result['macro_f1']:.4f}")
 
     # Detailed analysis for best threshold
     logger.info(f"\n=== DETAILED ANALYSIS (Threshold: {best_threshold}) ===")
@@ -256,6 +282,7 @@ def comprehensive_validation(model, val_dataset, device, thresholds, num_queries
         'results': results,
         'best_threshold': best_threshold,
         'best_f1': best_f1,
+        'best_result': best_result,  # Add the best result for easy access
         'similarities': all_similarities,
         'labels': query_labels,
         'query_info': query_info,
@@ -274,9 +301,19 @@ def save_results(results, output_dir, logger):
     # Save metrics table as simple text file
     txt_path = os.path.join(output_dir, 'threshold_analysis.txt')
     with open(txt_path, 'w') as f:
-        f.write("Threshold,Accuracy,Precision,Recall,F1\n")
+        f.write("TASK B - FACE RECOGNITION EVALUATION RESULTS\n")
+        f.write("=" * 60 + "\n")
+        f.write("Objective: Assign each face image to correct person identity\n")
+        f.write("           from a known set of individuals\n\n")
+
+        f.write("OFFICIAL EVALUATION METRICS:\n")
+        f.write(f"Top-1 Accuracy:      {results['best_result']['top1_accuracy']:.4f} ({results['best_result']['top1_accuracy']*100:.2f}%)\n")
+        f.write(f"Macro-averaged F1:   {results['best_result']['macro_f1']:.4f}\n\n")
+
+        f.write("THRESHOLD ANALYSIS:\n")
+        f.write("Threshold,Top1_Accuracy,Precision,Recall,F1,Macro_F1\n")
         for r in results['results']:
-            f.write(f"{r['threshold']:.4f},{r['accuracy']:.4f},{r['precision']:.4f},{r['recall']:.4f},{r['f1']:.4f}\n")
+            f.write(f"{r['threshold']:.4f},{r['top1_accuracy']:.4f},{r['precision']:.4f},{r['recall']:.4f},{r['f1']:.4f},{r['macro_f1']:.4f}\n")
     logger.info(f"Threshold analysis saved to: {txt_path}")
 
     # Save plots
@@ -292,18 +329,18 @@ def save_results(results, output_dir, logger):
     thresholds = [r['threshold'] for r in results['results']]
 
     # Accuracy
-    axes[0, 0].plot(thresholds, [r['accuracy'] for r in results['results']], 'b-o')
-    axes[0, 0].set_title('Accuracy vs Threshold')
+    axes[0, 0].plot(thresholds, [r['top1_accuracy'] for r in results['results']], 'b-o')
+    axes[0, 0].set_title('Top-1 Accuracy vs Threshold')
     axes[0, 0].set_xlabel('Threshold')
-    axes[0, 0].set_ylabel('Accuracy')
+    axes[0, 0].set_ylabel('Top-1 Accuracy')
     axes[0, 0].grid(True)
 
     # F1 Score
-    axes[0, 1].plot(thresholds, [r['f1'] for r in results['results']], 'g-o')
+    axes[0, 1].plot(thresholds, [r['macro_f1'] for r in results['results']], 'g-o')
     axes[0, 1].axvline(results['best_threshold'], color='r', linestyle='--', alpha=0.7, label=f"Best: {results['best_threshold']}")
-    axes[0, 1].set_title('F1 Score vs Threshold')
+    axes[0, 1].set_title('Macro-averaged F1 vs Threshold')
     axes[0, 1].set_xlabel('Threshold')
-    axes[0, 1].set_ylabel('F1 Score')
+    axes[0, 1].set_ylabel('Macro F1-Score')
     axes[0, 1].legend()
     axes[0, 1].grid(True)
 
@@ -395,6 +432,9 @@ def main():
     logger.info(f"Data directory: {args.data_dir}")
     logger.info(f"Output directory: {args.output_dir}")
 
+    # Log the official evaluation criteria
+    log_task_evaluation_criteria(logger)
+
     # Device
     if torch.backends.mps.is_available():
         device = torch.device('mps')
@@ -447,8 +487,9 @@ def main():
         return
 
     logger.info(f"\n🎉 Testing completed in {test_time:.1f} seconds")
-    logger.info(f"🏆 Best performance: F1={results['best_f1']:.4f} at threshold={results['best_threshold']}")
+    logger.info(f"🏆 Best performance: Top-1 Accuracy={results['best_result']['top1_accuracy']:.4f}, Macro F1={results['best_result']['macro_f1']:.4f}")
     logger.info(f"📊 ROC AUC: {results['roc_auc']:.4f}")
+    logger.info(f"🎯 Best threshold: {results['best_threshold']}")
 
     # Save results
     save_results(results, args.output_dir, logger)

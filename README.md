@@ -105,9 +105,23 @@ python train_b.py
 
 ### Testing and Evaluation
 
-#### Testing and Evaluation
+#### Official Competition Evaluation (For Judges)
 ```bash
-# Run comprehensive tests for both models (automated)
+# Quick official evaluation (recommended for judges)
+python run_evaluation.py
+
+# Alternative: Use unified test runner
+python run_all_tests.py --official     # Official evaluation only
+python run_all_tests.py --both         # Both comprehensive and official
+```
+
+**Evaluation Metrics:**
+- **Task A**: Accuracy | Precision | Recall | F1-Score
+- **Task B**: Top-1 Accuracy | Macro-averaged F1-Score
+
+#### Comprehensive Testing and Analysis
+```bash
+# Comprehensive analysis (default)
 python run_all_tests.py
 
 # Individual comprehensive tests
@@ -149,14 +163,13 @@ python show_predictions.py
 facealign/
 ├── models/
 │   ├── gender_model.py        # Gender classification model
-│   ├── face_model.py          # Face embedding model
-│   ├── best_model.pth         # Trained face model weights
-│   └── final_model.pth        # Alternative face model
+│   └── face_model.py          # Face embedding model
 ├── utils/
 │   ├── gender_dataset.py      # Gender dataset utilities
 │   └── face_dataset.py        # Face dataset utilities
 ├── checkpoints/
-│   └── gender_model.pt        # Trained gender model weights
+│   ├── gender_model.pt        # Trained gender model weights
+│   └── final_model.pth        # Trained face recognition weights
 ├── test_results/              # Face recognition test outputs
 ├── test_results_gender/       # Gender classification test outputs
 ├── outputs/                   # Generated outputs and visualizations
@@ -164,6 +177,7 @@ facealign/
 ├── train_b.py                 # Task B training script
 ├── test_gender_model.py       # Gender classification testing & analysis
 ├── test_model.py              # Face recognition testing & analysis
+├── run_evaluation.py          # Official competition evaluation suite
 ├── demo_gender.py             # Gender classification demo
 ├── show_predictions.py        # Face recognition demo
 ├── run_all_tests.py          # Automated test runner
@@ -214,7 +228,13 @@ The models are evaluated using the specified competition metrics:
 - **Task A Weight**: 30% (Gender Classification)
 - **Task B Weight**: 70% (Face Recognition)
 
+### Official Competition Evaluation
+- **For Judges**: Use `python run_evaluation.py` for standardized evaluation
+- **Output**: Comprehensive reports with official metrics and visualizations
+- **Format**: Timestamped results with detailed analysis and summary reports
+
 ### Testing Methodology
+- **Competition Evaluation**: `run_evaluation.py` generates official metric reports for judges
 - **Automated Testing**: `run_all_tests.py` executes comprehensive analysis for both tasks
 - **Individual Testing**: Separate test scripts for detailed analysis and debugging
 - **Performance Metrics**: Detailed evaluation with threshold analysis and visualization

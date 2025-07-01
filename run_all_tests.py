@@ -2,12 +2,18 @@
 """
 Test Runner - Face Recognition & Gender Classification
 Run comprehensive tests and generate results for both models.
+
+Usage:
+  python run_all_tests.py                    # Comprehensive analysis (default)
+  python run_all_tests.py --official         # Official competition evaluation
+  python run_all_tests.py --both             # Both comprehensive and official
 """
 
 import os
 import sys
 import subprocess
 import time
+import argparse
 from datetime import datetime
 
 def run_command(cmd, description):
@@ -30,7 +36,28 @@ def run_command(cmd, description):
         return False
 
 def main():
-    print("COMPREHENSIVE MODEL TESTING SUITE")
+    parser = argparse.ArgumentParser(description='Comprehensive Model Testing Suite')
+    parser.add_argument('--official', action='store_true',
+                       help='Run official competition evaluation (for judges)')
+    parser.add_argument('--both', action='store_true',
+                       help='Run both comprehensive analysis and official evaluation')
+    args = parser.parse_args()
+
+    # Determine what to run
+    if args.official:
+        mode = "OFFICIAL COMPETITION EVALUATION"
+        run_comprehensive = False
+        run_official = True
+    elif args.both:
+        mode = "COMPREHENSIVE + OFFICIAL EVALUATION"
+        run_comprehensive = True
+        run_official = True
+    else:
+        mode = "COMPREHENSIVE ANALYSIS"
+        run_comprehensive = True
+        run_official = False
+
+    print(f"{mode} SUITE")
     print("="*60)
     print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
@@ -40,13 +67,21 @@ def main():
     os.chdir(project_dir)
     print(f"Working directory: {project_dir}")
 
-    # Test configuration
-    tests = [
-        ("python test_gender_model.py", "Gender Classification - Comprehensive Analysis"),
-        ("python test_model.py", "Face Recognition - Comprehensive Analysis"),
-    ]
+    # Build test list based on mode
+    tests = []
 
-    print(f"\nRunning {len(tests)} comprehensive test suites...")
+    if run_comprehensive:
+        tests.extend([
+            ("python test_gender_model.py", "Gender Classification - Comprehensive Analysis"),
+            ("python test_model.py", "Face Recognition - Comprehensive Analysis"),
+        ])
+
+    if run_official:
+        tests.append(("python run_evaluation.py", "Official Competition Evaluation"))
+
+    print(f"\nRunning {len(tests)} test suite(s)...")
+    if run_official:
+        print("📊 Official evaluation metrics: Task A (Accuracy|Precision|Recall|F1) | Task B (Top-1 Accuracy|Macro F1)")
 
     # Run all tests
     results = []
@@ -73,19 +108,22 @@ def main():
     print()
 
     for description, success in results:
-        status = "PASSED" if success else "FAILED"
+        status = "✅ PASSED" if success else "❌ FAILED"
         print(f"  {status} - {description}")
 
     print()
 
     if successful == total:
-        print("All tests completed successfully!")
+        print("🎉 All tests completed successfully!")
         print()
-        print("Results saved to:")
-        print("  - test_results_gender/ (Gender classification)")
-        print("  - test_results/ (Face recognition)")
+        print("📁 Results saved to:")
+        if run_comprehensive:
+            print("  - test_results_gender/ (Gender classification analysis)")
+            print("  - test_results/ (Face recognition analysis)")
+        if run_official:
+            print("  - evaluation_results/ (Official competition evaluation)")
     else:
-        print("Some tests failed. Check the output above for details.")
+        print("⚠️  Some tests failed. Check the output above for details.")
 
     print(f"\nCompleted at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 

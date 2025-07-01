@@ -27,6 +27,21 @@ def log_print(message, log_file=None):
         with open(log_file, 'a') as f:
             f.write(message + '\n')
 
+def log_task_evaluation_criteria(log_file=None):
+    """Log the official evaluation criteria for Task A"""
+    log_print("=" * 80, log_file)
+    log_print("TASK A - GENDER CLASSIFICATION", log_file)
+    log_print("=" * 80, log_file)
+    log_print("Objective: Predict the gender (Male/Female) of a subject from a face image", log_file)
+    log_print("           captured under visually degraded conditions.", log_file)
+    log_print("", log_file)
+    log_print("OFFICIAL EVALUATION METRICS:", log_file)
+    log_print("  • Accuracy    - Overall classification accuracy", log_file)
+    log_print("  • Precision   - True positives / (True positives + False positives)", log_file)
+    log_print("  • Recall      - True positives / (True positives + False negatives)", log_file)
+    log_print("  • F1-Score    - Harmonic mean of Precision and Recall", log_file)
+    log_print("=" * 80, log_file)
+
 def evaluate_model_comprehensive(model, test_loader, device, log_file=None):
     """Comprehensive model evaluation"""
     log_print("=== COMPREHENSIVE MODEL EVALUATION ===", log_file)
@@ -69,18 +84,25 @@ def evaluate_model_comprehensive(model, test_loader, device, log_file=None):
 
 def analyze_performance(predictions, probabilities, labels, log_file=None):
     """Analyze model performance with detailed metrics"""
-    log_print("=== PERFORMANCE ANALYSIS ===", log_file)
+    log_print("\n" + "=" * 60, log_file)
+    log_print("OFFICIAL TASK A EVALUATION RESULTS", log_file)
+    log_print("=" * 60, log_file)
 
-    # Basic metrics
+    # OFFICIAL METRICS - Task A Requirements
     accuracy = accuracy_score(labels, predictions)
     precision = precision_score(labels, predictions, average='binary')
     recall = recall_score(labels, predictions, average='binary')
     f1 = f1_score(labels, predictions, average='binary')
 
-    log_print(f"Overall Accuracy: {accuracy:.4f}", log_file)
-    log_print(f"Overall Precision: {precision:.4f}", log_file)
-    log_print(f"Overall Recall: {recall:.4f}", log_file)
-    log_print(f"Overall F1-Score: {f1:.4f}", log_file)
+    log_print("📊 OFFICIAL EVALUATION METRICS:", log_file)
+    log_print(f"   Accuracy:  {accuracy:.4f} ({accuracy*100:.2f}%)", log_file)
+    log_print(f"   Precision: {precision:.4f}", log_file)
+    log_print(f"   Recall:    {recall:.4f}", log_file)
+    log_print(f"   F1-Score:  {f1:.4f}", log_file)
+    log_print("", log_file)
+
+    # Additional detailed analysis
+    log_print("📈 DETAILED PERFORMANCE ANALYSIS:", log_file)
 
     # Per-class metrics
     precision_per_class = precision_score(labels, predictions, average=None)
@@ -88,23 +110,23 @@ def analyze_performance(predictions, probabilities, labels, log_file=None):
     f1_per_class = f1_score(labels, predictions, average=None)
 
     class_names = ['Male', 'Female']
-    log_print("\n=== PER-CLASS METRICS ===", log_file)
+    log_print("\n👥 PER-CLASS BREAKDOWN:", log_file)
     for i, class_name in enumerate(class_names):
         prec = precision_per_class[i] if hasattr(precision_per_class, '__getitem__') else precision_per_class
         rec = recall_per_class[i] if hasattr(recall_per_class, '__getitem__') else recall_per_class
         f1_val = f1_per_class[i] if hasattr(f1_per_class, '__getitem__') else f1_per_class
-        log_print(f"{class_name:6s}: Precision={prec:.4f}, Recall={rec:.4f}, F1={f1_val:.4f}", log_file)
+        log_print(f"   {class_name:6s}: Precision={prec:.4f}, Recall={rec:.4f}, F1={f1_val:.4f}", log_file)
 
     # Confusion Matrix
     cm = confusion_matrix(labels, predictions)
-    log_print("\n=== CONFUSION MATRIX ===", log_file)
+    log_print("\n🔄 CONFUSION MATRIX:", log_file)
     log_print(f"              Predicted", log_file)
     log_print(f"           Male  Female", log_file)
     log_print(f"Actual Male  {cm[0,0]:4d}   {cm[0,1]:4d}", log_file)
     log_print(f"    Female   {cm[1,0]:4d}   {cm[1,1]:4d}", log_file)
 
     # Classification Report
-    log_print("\n=== DETAILED CLASSIFICATION REPORT ===", log_file)
+    log_print("\n📋 DETAILED CLASSIFICATION REPORT:", log_file)
     report = classification_report(labels, predictions, target_names=class_names)
     log_print(report, log_file)
 
@@ -113,14 +135,14 @@ def analyze_performance(predictions, probabilities, labels, log_file=None):
     fpr, tpr, thresholds = roc_curve(labels, female_probs)
     roc_auc = auc(fpr, tpr)
 
-    log_print(f"\n=== ROC ANALYSIS ===", log_file)
-    log_print(f"ROC AUC: {roc_auc:.4f}", log_file)
+    log_print(f"\n📈 ROC ANALYSIS:", log_file)
+    log_print(f"   ROC AUC: {roc_auc:.4f}", log_file)
 
     # Confidence analysis
-    log_print("\n=== CONFIDENCE ANALYSIS ===", log_file)
+    log_print(f"\n🎯 CONFIDENCE ANALYSIS:", log_file)
     max_probs = np.max(probabilities, axis=1)
-    log_print(f"Average confidence: {np.mean(max_probs):.4f} ± {np.std(max_probs):.4f}", log_file)
-    log_print(f"Confidence range: {np.min(max_probs):.4f} - {np.max(max_probs):.4f}", log_file)
+    log_print(f"   Average confidence: {np.mean(max_probs):.4f} ± {np.std(max_probs):.4f}", log_file)
+    log_print(f"   Confidence range: {np.min(max_probs):.4f} - {np.max(max_probs):.4f}", log_file)
 
     # Confidence by class
     male_indices = labels == 0
@@ -129,8 +151,10 @@ def analyze_performance(predictions, probabilities, labels, log_file=None):
     male_confidence = np.mean(max_probs[male_indices])
     female_confidence = np.mean(max_probs[female_indices])
 
-    log_print(f"Male predictions confidence: {male_confidence:.4f}", log_file)
-    log_print(f"Female predictions confidence: {female_confidence:.4f}", log_file)
+    log_print(f"   Male predictions confidence: {male_confidence:.4f}", log_file)
+    log_print(f"   Female predictions confidence: {female_confidence:.4f}", log_file)
+
+    log_print("=" * 60, log_file)
 
     return {
         'accuracy': accuracy,
@@ -284,15 +308,21 @@ def save_results(results, output_dir, log_file=None):
     # Save metrics summary
     metrics_path = os.path.join(output_dir, 'performance_metrics.txt')
     with open(metrics_path, 'w') as f:
-        f.write("Gender Classification Model Performance Summary\n")
-        f.write("=" * 50 + "\n\n")
-        f.write(f"Overall Accuracy: {results['accuracy']:.4f}\n")
-        f.write(f"Overall Precision: {results['precision']:.4f}\n")
-        f.write(f"Overall Recall: {results['recall']:.4f}\n")
-        f.write(f"Overall F1-Score: {results['f1']:.4f}\n")
+        f.write("TASK A - GENDER CLASSIFICATION EVALUATION RESULTS\n")
+        f.write("=" * 60 + "\n")
+        f.write("Objective: Predict gender (Male/Female) from face images\n")
+        f.write("           captured under visually degraded conditions\n\n")
+
+        f.write("OFFICIAL EVALUATION METRICS:\n")
+        f.write(f"Accuracy:  {results['accuracy']:.4f} ({results['accuracy']*100:.2f}%)\n")
+        f.write(f"Precision: {results['precision']:.4f}\n")
+        f.write(f"Recall:    {results['recall']:.4f}\n")
+        f.write(f"F1-Score:  {results['f1']:.4f}\n\n")
+
+        f.write("ADDITIONAL METRICS:\n")
         f.write(f"ROC AUC: {results['roc_auc']:.4f}\n\n")
 
-        f.write("Per-Class Metrics:\n")
+        f.write("PER-CLASS METRICS:\n")
         f.write(f"Male   - Precision: {results['precision_per_class'][0]:.4f}, Recall: {results['recall_per_class'][0]:.4f}, F1: {results['f1_per_class'][0]:.4f}\n")
         f.write(f"Female - Precision: {results['precision_per_class'][1]:.4f}, Recall: {results['recall_per_class'][1]:.4f}, F1: {results['f1_per_class'][1]:.4f}\n")
 
@@ -441,6 +471,9 @@ def main():
     log_print(f"Model path: {args.model_path}", log_file)
     log_print(f"Data directory: {args.data_dir}", log_file)
     log_print(f"Output directory: {args.output_dir}", log_file)
+
+    # Log the official evaluation criteria
+    log_task_evaluation_criteria(log_file)
 
     # Device
     if torch.backends.mps.is_available():

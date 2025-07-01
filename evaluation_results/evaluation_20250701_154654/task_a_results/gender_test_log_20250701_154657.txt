@@ -1,0 +1,197 @@
+=== GENDER CLASSIFICATION MODEL TESTING ===
+Model path: checkpoints/gender_model.pt
+Data directory: data/facecom/Task_A/
+Output directory: evaluation_results/evaluation_20250701_154654/task_a_results
+================================================================================
+TASK A - GENDER CLASSIFICATION
+================================================================================
+Objective: Predict the gender (Male/Female) of a subject from a face image
+           captured under visually degraded conditions.
+
+OFFICIAL EVALUATION METRICS:
+  • Accuracy    - Overall classification accuracy
+  • Precision   - True positives / (True positives + False positives)
+  • Recall      - True positives / (True positives + False negatives)
+  • F1-Score    - Harmonic mean of Precision and Recall
+================================================================================
+Using device: mps
+Loading model...
+✅ Model loaded successfully
+Loading dataset...
+Dataset split: val
+Total samples: 422
+Class distribution: Male=317, Female=105
+=== COMPREHENSIVE MODEL EVALUATION ===
+Evaluating on 14 batches...
+Evaluation completed on 422 samples
+
+============================================================
+OFFICIAL TASK A EVALUATION RESULTS
+============================================================
+📊 OFFICIAL EVALUATION METRICS:
+   Accuracy:  0.9621 (96.21%)
+   Precision: 0.9684
+   Recall:    0.8762
+   F1-Score:  0.9200
+
+📈 DETAILED PERFORMANCE ANALYSIS:
+
+👥 PER-CLASS BREAKDOWN:
+   Male  : Precision=0.9602, Recall=0.9905, F1=0.9752
+   Female: Precision=0.9684, Recall=0.8762, F1=0.9200
+
+🔄 CONFUSION MATRIX:
+              Predicted
+           Male  Female
+Actual Male   314      3
+    Female     13     92
+
+📋 DETAILED CLASSIFICATION REPORT:
+              precision    recall  f1-score   support
+
+        Male       0.96      0.99      0.98       317
+      Female       0.97      0.88      0.92       105
+
+    accuracy                           0.96       422
+   macro avg       0.96      0.93      0.95       422
+weighted avg       0.96      0.96      0.96       422
+
+
+📈 ROC ANALYSIS:
+   ROC AUC: 0.9933
+
+🎯 CONFIDENCE ANALYSIS:
+   Average confidence: 0.9947 ± 0.0360
+   Confidence range: 0.5055 - 1.0000
+   Male predictions confidence: 0.9985
+   Female predictions confidence: 0.9833
+============================================================
+=== FEATURE ANALYSIS ===
+Feature dimensionality: 512
+Feature range: 0.0000 - 7.4897
+Feature mean: 0.6185 ± 0.6168
+NaN values: 0, Inf values: 0
+✅ Features are clean (no NaN/Inf values)
+
+Male samples: 317
+Female samples: 105
+Feature separation (L2 distance between class means): 15.0118
+=== THRESHOLD ANALYSIS ===
+Threshold | Accuracy | Precision | Recall | F1-Score
+--------------------------------------------------
+    0.10 |   0.9668 |    0.9505 | 0.9143 |   0.9320
+    0.15 |   0.9645 |    0.9500 | 0.9048 |   0.9268
+    0.20 |   0.9668 |    0.9691 | 0.8952 |   0.9307
+    0.25 |   0.9645 |    0.9688 | 0.8857 |   0.9254
+    0.30 |   0.9645 |    0.9688 | 0.8857 |   0.9254
+    0.35 |   0.9645 |    0.9688 | 0.8857 |   0.9254
+    0.40 |   0.9645 |    0.9688 | 0.8857 |   0.9254
+    0.45 |   0.9645 |    0.9688 | 0.8857 |   0.9254
+    0.50 |   0.9621 |    0.9684 | 0.8762 |   0.9200
+    0.55 |   0.9621 |    0.9684 | 0.8762 |   0.9200
+    0.60 |   0.9621 |    0.9684 | 0.8762 |   0.9200
+    0.65 |   0.9621 |    0.9684 | 0.8762 |   0.9200
+    0.70 |   0.9621 |    0.9684 | 0.8762 |   0.9200
+    0.75 |   0.9597 |    0.9681 | 0.8667 |   0.9146
+    0.80 |   0.9573 |    0.9677 | 0.8571 |   0.9091
+    0.85 |   0.9573 |    0.9677 | 0.8571 |   0.9091
+    0.90 |   0.9550 |    0.9674 | 0.8476 |   0.9036
+    0.95 |   0.9573 |    0.9780 | 0.8476 |   0.9082
+
+🏆 Best threshold: 0.10 with F1: 0.9320
+=== PREDICTION EXAMPLES ===
+Example  1: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example  2: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example  3: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example  4: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example  5: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example  6: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example  7: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example  8: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example  9: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example 10: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example 11: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example 12: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example 13: ✅ CORRECT
+  True: Female | Predicted: Female | Confidence: 0.7594
+  Probabilities -> Male: 0.2406, Female: 0.7594
+
+Example 14: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example 15: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 0.9989
+  Probabilities -> Male: 0.9989, Female: 0.0011
+
+Example 16: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example 17: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example 18: ✅ CORRECT
+  True: Female | Predicted: Female | Confidence: 1.0000
+  Probabilities -> Male: 0.0000, Female: 1.0000
+
+Example 19: ❌ WRONG
+  True: Female | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Example 20: ✅ CORRECT
+  True: Male   | Predicted: Male   | Confidence: 1.0000
+  Probabilities -> Male: 1.0000, Female: 0.0000
+
+Accuracy on these 20 examples: 95.00% (19/20)
+
+🎉 Testing completed in 21.4 seconds
+🏆 Best performance: Accuracy=0.9621, F1=0.9200
+📊 ROC AUC: 0.9933
+🎯 Optimal threshold: 0.10 (F1=0.9320)
+=== SAVING RESULTS ===
+Performance metrics saved to: evaluation_results/evaluation_20250701_154654/task_a_results/performance_metrics.txt
+Threshold analysis saved to: evaluation_results/evaluation_20250701_154654/task_a_results/threshold_analysis.txt
+Performance plots saved to: evaluation_results/evaluation_20250701_154654/task_a_results/performance_analysis.png
+Threshold analysis plots saved to: evaluation_results/evaluation_20250701_154654/task_a_results/threshold_analysis.png
+✅ All visualizations saved successfully
+
+📝 Complete log saved to: evaluation_results/evaluation_20250701_154654/task_a_results/gender_test_log_20250701_154657.txt
+✅ Testing completed successfully!

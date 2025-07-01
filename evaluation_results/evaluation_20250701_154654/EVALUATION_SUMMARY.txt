@@ -1,0 +1,43 @@
+FACE RECOGNITION COMPETITION - EVALUATION SUMMARY
+============================================================
+Evaluation Date: 2025-07-01 15:47:40
+
+TASK A - GENDER CLASSIFICATION RESULTS
+----------------------------------------
+TASK A - GENDER CLASSIFICATION EVALUATION RESULTS
+============================================================
+Objective: Predict gender (Male/Female) from face images
+           captured under visually degraded conditions
+
+OFFICIAL EVALUATION METRICS:
+Accuracy:  0.9621 (96.21%)
+Precision: 0.9684
+Recall:    0.8762
+F1-Score:  0.9200
+
+ADDITIONAL METRICS:
+ROC AUC: 0.9933
+
+PER-CLASS METRICS:
+Male   - Precision: 0.9602, Recall: 0.9905, F1: 0.9752
+Female - Precision: 0.9684, Recall: 0.8762, F1: 0.9200
+
+
+TASK B - FACE RECOGNITION RESULTS
+----------------------------------------
+TASK B - FACE RECOGNITION EVALUATION RESULTS
+============================================================
+Objective: Assign each face a binary classification based
+           on whether or not its present in the dataset
+
+OFFICIAL EVALUATION METRICS:
+Top-1 Accuracy:      0.7130 (71.30%)
+Macro-averaged F1:   0.7117
+
+THRESHOLD ANALYSIS:
+
+
+EVALUATION CRITERIA:
+--------------------
+Task A: Accuracy | Precision | Recall | F1-Score
+Task B: Top-1 Accuracy | Macro-averaged F1-Score
