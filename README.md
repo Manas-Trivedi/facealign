@@ -164,50 +164,58 @@ A critical challenge in face recognition is **embedding collapse**, where learne
 ### 1. Decorrelated Batch Normalization (DBN)
 <details>
 <summary>Advanced normalization technique for feature decorrelation</summary>
+
 Traditional Batch Normalization standardizes feature variance but doesn't address correlation between dimensions. My custom DBN implementation:
+
 - **Decorrelates feature dimensions** by standardizing the full covariance matrix
 - **Prevents dimensional collapse** where features become highly correlated
 - **Stable eigendecomposition** with fallback mechanisms for MPS/CUDA compatibility
 - **Aggressive eigenvalue clamping** (min=1e-2) for numerical stability
-</details>
 
+</details>
 
 ### 2. Alignment-Uniformity Loss Framework
 <details>
 <summary>Geometric optimization for robust embedding distribution</summary>
+
 Based on Wang et al.'s geometric properties for representation learning:
 
-**Alignment Loss**: `L_align = ||anchor - positive||²`
-- Pulls positive pairs closer together on the unit hypersphere
-- Ensures embeddings of the same identity remain nearby
+- **Alignment Loss**: `L_align = ||anchor - positive||²`
+    - Pulls positive pairs closer together on the unit hypersphere
+    - Ensures embeddings of the same identity remain nearby
 
-**Uniformity Loss**: `L_uniform = log(E[exp(-t||xi - xj||²)])`
-- Spreads embeddings uniformly across the hypersphere
-- Prevents clustering that leads to collapse
-- Custom MPS-compatible pairwise distance computation
+- **Uniformity Loss**: `L_uniform = log(E[exp(-t||xi - xj||²)])`
+    - Spreads embeddings uniformly across the hypersphere
+    - Prevents clustering that leads to collapse
+    - Custom MPS-compatible pairwise distance computation
 
-**Combined with Triplet Loss**:
-```
-L_total = L_triplet + L_align + λ * L_uniform
-```
+- **Combined with Triplet Loss**:
+    ```
+    L_total = L_triplet + L_align + λ * L_uniform
+    ```
+
 </details>
 
 ### 3. Hard Negative Mining
 <details>
 <summary>Intelligent negative sampling for robust training</summary>
+
 - **Dynamic difficulty adjustment**: Selects negatives with highest cosine similarity to anchor
 - **Progressive enabling**: Activates after 3 epochs when model stabilizes
 - **Embedding-based selection**: Uses current model state to find challenging negatives
 - **Fallback mechanisms**: Graceful degradation to random sampling when needed
+
 </details>
 
 ### 4. Architectural Safeguards
 <details>
 <summary>Comprehensive protection mechanisms</summary>
+
 - **L2 Normalization**: Forces embeddings onto unit hypersphere
 - **Gradient Clipping**: Prevents explosive gradients that can cause collapse
 - **NaN Detection**: Multiple checkpoints with fallback to stable operations
 - **Conservative Dropout**: Prevents over-regularization that can lead to collapse
+
 </details>
 
 
