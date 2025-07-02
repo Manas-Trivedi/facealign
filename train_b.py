@@ -99,7 +99,7 @@ def validate_model(model, val_dataset, device, threshold=0.5, num_queries=200, d
 
     return accuracy, f1, predictions, query_labels
 
-def train_epoch(model, dataloader, criterion, optimizer, device, debug_training=False):
+def train_epoch(model, dataloader, criterion, optimizer, device):
     """Train for one epoch"""
     model.train()
     total_loss = 0
@@ -137,11 +137,6 @@ def train_epoch(model, dataloader, criterion, optimizer, device, debug_training=
             'Avg Loss': f'{total_loss/num_batches:.4f}'
         })
 
-    if debug_training and pos_distances:
-        print(f"  Avg Positive Distance: {np.mean(pos_distances):.4f}")
-        print(f"  Avg Negative Distance: {np.mean(neg_distances):.4f}")
-        print(f"  Distance Margin: {np.mean(neg_distances) - np.mean(pos_distances):.4f}")
-
     return total_loss / num_batches
 
 def main():
@@ -169,6 +164,10 @@ def main():
                         help='Number of dataloader workers')
     parser.add_argument('--val_queries', type=int, default=200,
                         help='Number of validation queries per epoch')
+    parser.add_argument('--resume', action='store_true',
+                        help='Resume training from best_model.pt checkpoint')
+    parser.add_argument('--start_epoch', type=int, default=0,
+                        help='Starting epoch number (used with --resume)')
 
     args = parser.parse_args()
 
@@ -212,19 +211,47 @@ def main():
         pretrained=True
     ).to(device)
 
+    # Resume from checkpoint if requested
+    start_epoch = args.start_epoch
+    if args.resume:
+        checkpoint_path = os.path.join(args.save_dir, 'best_model.pt')
+        if os.path.exists(checkpoint_path):
+            print(f"Loading checkpoint from {checkpoint_path}...")
+            model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+            print("Checkpoint loaded successfully!")
+
+            # Validate current performance
+            print("Evaluating current model performance...")
+            val_acc, val_f1, _, _ = validate_model(
+                model, val_dataset, device,
+                threshold=args.threshold,
+                num_queries=args.val_queries,
+                debug=True
+            )
+            print(f"Current model: Val Acc: {val_acc:.4f} | Val F1: {val_f1:.4f}")
+        else:
+            print(f"Warning: Checkpoint {checkpoint_path} not found. Starting from scratch.")
+            start_epoch = 0
+
     # Loss and optimizer
     criterion = AlignmentUniformityLoss(margin=args.margin, uniform_weight=0.5)  # Use new loss!
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-5)  # Reduced weight decay
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.8)  # More gradual decay
 
+    # Adjust scheduler if resuming
+    if args.resume and start_epoch > 0:
+        for _ in range(start_epoch):
+            scheduler.step()
+        print(f"Scheduler adjusted for epoch {start_epoch}, current LR: {optimizer.param_groups[0]['lr']:.6f}")
+
     # Training loop
-    print("Starting training...")
+    print(f"Starting training from epoch {start_epoch + 1}...")
     best_f1 = 0.0
     train_losses = []
     val_accuracies = []
     val_f1s = []
 
-    for epoch in range(args.epochs):
+    for epoch in range(start_epoch, args.epochs):
         print(f"\nEpoch {epoch+1}/{args.epochs}")
 
         # Enable hard negative mining after 3 epochs
@@ -244,8 +271,7 @@ def main():
 
         # Train
         start_time = time.time()
-        debug_training = (epoch == 0)  # Debug first epoch
-        train_loss = train_epoch(model, train_loader, criterion, optimizer, device, debug_training)
+        train_loss = train_epoch(model, train_loader, criterion, optimizer, device)
         train_time = time.time() - start_time
 
         # Validate
