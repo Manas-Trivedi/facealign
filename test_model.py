@@ -401,11 +401,11 @@ def save_results(results, output_dir, logger):
 
 def main():
     parser = argparse.ArgumentParser(description='Test Face Recognition Model')
-    parser.add_argument('--model_path', type=str, default='checkpoints/final_model.pth',
+    parser.add_argument('--model_path', type=str, default='checkpoints/final_model.pt',
                         help='Path to the trained model')
     parser.add_argument('--data_dir', type=str, default='data/facecom/Task_B/',
                         help='Path to data directory')
-    parser.add_argument('--embedding_dim', type=int, default=256,
+    parser.add_argument('--embedding_dim', type=int, default=512,
                         help='Embedding dimension')
     parser.add_argument('--backbone', type=str, default='resnet18',
                         choices=['resnet18', 'resnet34', 'resnet50'],
@@ -472,7 +472,7 @@ def main():
     logger.info(f"Negative queries available: {len(val_dataset.negative_queries)}")
 
     # Test thresholds
-    thresholds = [0.95, 0.96, 0.97, 0.975, 0.98, 0.985, 0.99, 0.992, 0.994, 0.995, 0.996, 0.997, 0.998, 0.999, 0.9995]
+    thresholds = [0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.975, 0.98, 0.99]
 
     # Run comprehensive validation
     start_time = time.time()

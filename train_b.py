@@ -329,7 +329,7 @@ def main():
     print(f"\nBest threshold: {best_threshold} with F1: {best_final_f1:.4f}")
 
     # Save final model with best threshold
-    torch.save(model.state_dict(), os.path.join(args.save_dir, 'final_model.pt'))
+    torch.save({'state_dict': model.state_dict(), 'threshold': best_threshold}, os.path.join(args.save_dir, 'final_model.pt'))
 
     print("Training completed!")
 
