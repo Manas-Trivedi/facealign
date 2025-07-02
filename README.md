@@ -75,7 +75,7 @@ The gender classification model demonstrates strong robustness, achieving high p
 - **Overall Recall**: 87.62%
 - **Overall F1-Score**: 92.00%
 
-ADDITIONAL METRICS:
+ADDITIONAL METRICS:-
 ROC AUC: 0.9933
 
 PER-CLASS METRICS:
@@ -84,10 +84,10 @@ Female - Precision: 0.9684, Recall: 0.8762, F1: 0.9200
 
 ### Task B: Face Recognition
 Face recognition under adverse conditions presents significantly greater complexity, with the embedding-based approach achieving competitive results:
-- **Optimal Threshold**: 0.975 (determined through systematic evaluation)
-- **Best Accuracy**: 72.00%
-- **Best F1-Score**: 72.44%
-- **Precision at Optimal**: 71.32%
+- **Optimal Threshold**: 0.91 (determined through systematic evaluation)
+- **Top-1 Accuracy**: 89.10%
+- **Macro F1-Score**: 0.8910
+- **ROC AUC**: 94.43%
 
 These results demonstrate strong performance considering the challenging nature of identity matching under visual degradations.
 
