@@ -91,6 +91,23 @@ Face recognition under adverse conditions presents significantly greater complex
 
 These results demonstrate strong performance considering the challenging nature of identity matching under visual degradations.
 
+## Visual Performance Analysis
+
+The following performance visualizations demonstrate the robustness and effectiveness of both models:
+
+### Task A: Gender Classification Results
+![Gender Classification Performance](plots/performance_analysis_gender.png)
+*Comprehensive performance analysis including confusion matrix, ROC curve, confidence distribution, and per-class metrics*
+
+### Task B: Face Recognition Results
+![Face Recognition Performance](plots/performance_analysis.png)
+*Model performance analysis showing threshold optimization, precision-recall curves, and similarity distributions*
+
+![Similarity Analysis](plots/similarity_distribution.png)
+*Cosine similarity distributions for positive and negative pairs, demonstrating clear separability*
+
+> **Note**: All performance charts are generated automatically when running the test scripts (`test_gender_model.py` and `test_model.py`)
+
 ## Quick Start
 
 ### Installation
