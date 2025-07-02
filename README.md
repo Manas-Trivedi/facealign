@@ -10,8 +10,8 @@ This project tackles one of the most challenging problems in computer vision: ma
 I developed a robust system that maintains consistent performance across these diverse visual degradations through novel architectural choices and advanced training methodologies.
 
 **Key Results:**
-- **Task A**: Gender Classification (Binary) - 99.79% accuracy achieved
-- **Task B**: Face Recognition (Identity Matching) - 72.00% accuracy with embedding-based approach
+- **Task A**: Gender Classification (Binary) - 96.21% accuracy achieved
+- **Task B**: Face Recognition (Identity Matching) - 89.10% accuracy with embedding-based approach
 
 ## Technical Innovations
 
