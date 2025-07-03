@@ -9,7 +9,7 @@ class FaceDataset(Dataset):
     def __init__(self, data_dir, split='train', transform=None):
         """
         Args:
-            data_dir: Path to data directory (e.g., 'data/facecom/Task_B/')
+            data_dir: Path to data directory (e.g., 'Comsys-Hackathon5/Task_B/')
             split: 'train' or 'val'
             transform: Image transformations
         """

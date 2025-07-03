@@ -116,7 +116,7 @@ def train_model():
     print("=" * 60)
 
     # Configuration
-    DATA_DIR = "data/facecom/Task_A"
+    DATA_DIR = "Comsys-Hackathon5/Task_A"
     BATCH_SIZE = 16
     NUM_WORKERS = 0
     LEARNING_RATE = 1e-4

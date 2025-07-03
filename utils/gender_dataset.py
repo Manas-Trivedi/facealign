@@ -13,7 +13,7 @@ class GenderDataset(Dataset):
         Gender Classification Dataset with class balancing
 
         Args:
-            data_dir (str): Path to data directory (e.g., 'data/facecom/Task_A')
+            data_dir (str): Path to data directory (e.g., 'Comsys-Hackathon5/Task_A')
             split (str): 'train' or 'val'
             oversample_female (bool): Whether to oversample female images
             target_female_count (int): Target number of female samples after oversampling
@@ -196,7 +196,7 @@ def get_dataloaders(data_dir, batch_size=32, num_workers=2):
 
 if __name__ == "__main__":
     # Test the dataset
-    data_dir = "data/facecom/Task_A"
+    data_dir = "Comsys-Hackathon5/Task_A"
 
     # Test dataset creation
     train_dataset = GenderDataset(data_dir, split='train')

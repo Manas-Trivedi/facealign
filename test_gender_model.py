@@ -42,9 +42,9 @@ def log_task_evaluation_criteria(log_file=None):
     log_print("  • F1-Score    - Harmonic mean of Precision and Recall", log_file)
     log_print("=" * 80, log_file)
 
-def evaluate_model_comprehensive(model, test_loader, device, log_file=None):
+def evaluate_model_comprehensive(model, test_loader, device, split_name, log_file=None):
     """Comprehensive model evaluation"""
-    log_print("=== COMPREHENSIVE MODEL EVALUATION ===", log_file)
+    log_print(f"=== COMPREHENSIVE MODEL EVALUATION - {split_name.upper()} SET ===", log_file)
 
     model.eval()
     all_predictions = []
@@ -55,7 +55,7 @@ def evaluate_model_comprehensive(model, test_loader, device, log_file=None):
     log_print(f"Evaluating on {len(test_loader)} batches...", log_file)
 
     with torch.no_grad():
-        for batch_idx, (images, labels) in enumerate(tqdm(test_loader, desc="Evaluating")):
+        for batch_idx, (images, labels) in enumerate(tqdm(test_loader, desc=f"Evaluating {split_name}")):
             images, labels = images.to(device), labels.to(device)
 
             # Forward pass
@@ -82,10 +82,10 @@ def evaluate_model_comprehensive(model, test_loader, device, log_file=None):
 
     return all_predictions, all_probabilities, all_labels, all_features
 
-def analyze_performance(predictions, probabilities, labels, log_file=None):
+def analyze_performance(predictions, probabilities, labels, split_name, log_file=None):
     """Analyze model performance with detailed metrics"""
     log_print("\n" + "=" * 60, log_file)
-    log_print("OFFICIAL TASK A EVALUATION RESULTS", log_file)
+    log_print(f"OFFICIAL TASK A EVALUATION RESULTS - {split_name.upper()} SET", log_file)
     log_print("=" * 60, log_file)
 
     # OFFICIAL METRICS - Task A Requirements
@@ -94,15 +94,15 @@ def analyze_performance(predictions, probabilities, labels, log_file=None):
     recall = recall_score(labels, predictions, average='binary')
     f1 = f1_score(labels, predictions, average='binary')
 
-    log_print("📊 OFFICIAL EVALUATION METRICS:", log_file)
+    log_print(f"OFFICIAL EVALUATION METRICS - {split_name.upper()}:", log_file)
     log_print(f"   Accuracy:  {accuracy:.4f} ({accuracy*100:.2f}%)", log_file)
-    log_print(f"   Precision: {precision:.4f}", log_file)
-    log_print(f"   Recall:    {recall:.4f}", log_file)
-    log_print(f"   F1-Score:  {f1:.4f}", log_file)
+    log_print(f"   Precision: {precision:.4f} ({precision*100:.2f}%)", log_file)
+    log_print(f"   Recall:    {recall:.4f} ({recall*100:.2f}%)", log_file)
+    log_print(f"   F1-Score:  {f1:.4f} ({f1*100:.2f}%)", log_file)
     log_print("", log_file)
 
     # Additional detailed analysis
-    log_print("📈 DETAILED PERFORMANCE ANALYSIS:", log_file)
+    log_print("DETAILED PERFORMANCE ANALYSIS:", log_file)
 
     # Per-class metrics
     precision_per_class = precision_score(labels, predictions, average=None)
@@ -110,7 +110,7 @@ def analyze_performance(predictions, probabilities, labels, log_file=None):
     f1_per_class = f1_score(labels, predictions, average=None)
 
     class_names = ['Male', 'Female']
-    log_print("\n👥 PER-CLASS BREAKDOWN:", log_file)
+    log_print("\nPER-CLASS BREAKDOWN:", log_file)
     for i, class_name in enumerate(class_names):
         prec = precision_per_class[i] if hasattr(precision_per_class, '__getitem__') else precision_per_class
         rec = recall_per_class[i] if hasattr(recall_per_class, '__getitem__') else recall_per_class
@@ -119,14 +119,14 @@ def analyze_performance(predictions, probabilities, labels, log_file=None):
 
     # Confusion Matrix
     cm = confusion_matrix(labels, predictions)
-    log_print("\n🔄 CONFUSION MATRIX:", log_file)
+    log_print("\nCONFUSION MATRIX:", log_file)
     log_print(f"              Predicted", log_file)
     log_print(f"           Male  Female", log_file)
     log_print(f"Actual Male  {cm[0,0]:4d}   {cm[0,1]:4d}", log_file)
     log_print(f"    Female   {cm[1,0]:4d}   {cm[1,1]:4d}", log_file)
 
     # Classification Report
-    log_print("\n📋 DETAILED CLASSIFICATION REPORT:", log_file)
+    log_print("\nDETAILED CLASSIFICATION REPORT:", log_file)
     report = classification_report(labels, predictions, target_names=class_names)
     log_print(report, log_file)
 
@@ -135,11 +135,11 @@ def analyze_performance(predictions, probabilities, labels, log_file=None):
     fpr, tpr, thresholds = roc_curve(labels, female_probs)
     roc_auc = auc(fpr, tpr)
 
-    log_print(f"\n📈 ROC ANALYSIS:", log_file)
+    log_print(f"\nROC ANALYSIS:", log_file)
     log_print(f"   ROC AUC: {roc_auc:.4f}", log_file)
 
     # Confidence analysis
-    log_print(f"\n🎯 CONFIDENCE ANALYSIS:", log_file)
+    log_print(f"\nCONFIDENCE ANALYSIS:", log_file)
     max_probs = np.max(probabilities, axis=1)
     log_print(f"   Average confidence: {np.mean(max_probs):.4f} ± {np.std(max_probs):.4f}", log_file)
     log_print(f"   Confidence range: {np.min(max_probs):.4f} - {np.max(max_probs):.4f}", log_file)
@@ -188,9 +188,9 @@ def analyze_features(features, labels, log_file=None):
     log_print(f"NaN values: {nan_count}, Inf values: {inf_count}", log_file)
 
     if nan_count > 0 or inf_count > 0:
-        log_print("⚠️ WARNING: Features contain NaN or Inf values!", log_file)
+        log_print("WARNING: Features contain NaN or Inf values!", log_file)
     else:
-        log_print("✅ Features are clean (no NaN/Inf values)", log_file)
+        log_print("Features are clean (no NaN/Inf values)", log_file)
 
     # Separate features by class
     male_features = features[labels == 0]
@@ -253,7 +253,7 @@ def threshold_analysis(probabilities, labels, log_file=None):
             best_f1 = f1
             best_threshold = thresh
 
-    log_print(f"\n🏆 Best threshold: {best_threshold:.2f} with F1: {best_f1:.4f}", log_file)
+    log_print(f"\nBest threshold: {best_threshold:.2f} with F1: {best_f1:.4f}", log_file)
 
     return results, best_threshold, best_f1
 
@@ -285,7 +285,7 @@ def show_prediction_examples(model, dataset, device, num_examples=20, log_file=N
             if is_correct:
                 correct_count += 1
 
-            status = "✅ CORRECT" if is_correct else "❌ WRONG"
+            status = "CORRECT" if is_correct else "WRONG"
 
             log_print(f"Example {i+1:2d}: {status}", log_file)
             log_print(f"  True: {class_names[true_label]:6s} | Predicted: {class_names[predicted_label]:6s} | Confidence: {confidence:.4f}", log_file)
@@ -315,9 +315,9 @@ def save_results(results, output_dir, log_file=None):
 
         f.write("OFFICIAL EVALUATION METRICS:\n")
         f.write(f"Accuracy:  {results['accuracy']:.4f} ({results['accuracy']*100:.2f}%)\n")
-        f.write(f"Precision: {results['precision']:.4f}\n")
-        f.write(f"Recall:    {results['recall']:.4f}\n")
-        f.write(f"F1-Score:  {results['f1']:.4f}\n\n")
+        f.write(f"Precision: {results['precision']:.4f} ({results['precision']*100:.2f}%)\n")
+        f.write(f"Recall:    {results['recall']:.4f} ({results['recall']*100:.2f}%)\n")
+        f.write(f"F1-Score:  {results['f1']:.4f} ({results['f1']*100:.2f}%)\n\n")
 
         f.write("ADDITIONAL METRICS:\n")
         f.write(f"ROC AUC: {results['roc_auc']:.4f}\n\n")
@@ -440,16 +440,16 @@ def save_results(results, output_dir, log_file=None):
             log_print(f"Threshold analysis plots saved to: {thresh_plot_path}", log_file)
             plt.close()
 
-        log_print("✅ All visualizations saved successfully", log_file)
+        log_print("All visualizations saved successfully", log_file)
 
     except Exception as e:
-        log_print(f"⚠️ Warning: Could not create visualizations: {e}", log_file)
+        log_print(f"Warning: Could not create visualizations: {e}", log_file)
 
 def main():
     parser = argparse.ArgumentParser(description='Test Gender Classification Model')
     parser.add_argument('--model_path', type=str, default='checkpoints/gender_model.pt',
                         help='Path to the trained model')
-    parser.add_argument('--data_dir', type=str, default='data/facecom/Task_A/',
+    parser.add_argument('--data_dir', type=str, default='Comsys-Hackathon5/Task_A/',
                         help='Path to data directory')
     parser.add_argument('--batch_size', type=int, default=32,
                         help='Batch size for evaluation')
@@ -457,8 +457,6 @@ def main():
                         help='Directory to save test results')
     parser.add_argument('--num_examples', type=int, default=20,
                         help='Number of prediction examples to show')
-    parser.add_argument('--use_val_set', action='store_true',
-                        help='Use validation set instead of train set for testing')
 
     args = parser.parse_args()
 
@@ -487,74 +485,103 @@ def main():
     model = GenderClassifier(num_classes=2, dropout_rate=0.3).to(device)
 
     if not os.path.exists(args.model_path):
-        log_print(f"❌ ERROR: Model file not found: {args.model_path}", log_file)
+        log_print(f"ERROR: Model file not found: {args.model_path}", log_file)
         return
 
     try:
         state_dict = torch.load(args.model_path, map_location=device)
         model.load_state_dict(state_dict)
-        log_print("✅ Model loaded successfully", log_file)
+        log_print("Model loaded successfully", log_file)
     except Exception as e:
-        log_print(f"❌ ERROR: Failed to load model: {e}", log_file)
+        log_print(f"ERROR: Failed to load model: {e}", log_file)
         return
 
-    # Load dataset
-    log_print("Loading dataset...", log_file)
-    split = 'val' if args.use_val_set else 'train'
-    dataset = GenderDataset(args.data_dir, split=split, oversample_female=False)
+    # Evaluate on both training and validation sets
+    all_results = {}
 
-    test_loader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=args.batch_size,
-        shuffle=False,
-        num_workers=2
-    )
+    for split in ['train', 'val']:
+        log_print(f"\n{'='*80}", log_file)
+        log_print(f"EVALUATING ON {split.upper()} SET", log_file)
+        log_print(f"{'='*80}", log_file)
 
-    log_print(f"Dataset split: {split}", log_file)
-    log_print(f"Total samples: {len(dataset)}", log_file)
-    class_dist = dataset.get_class_distribution()
-    log_print(f"Class distribution: Male={class_dist.get(0, 0)}, Female={class_dist.get(1, 0)}", log_file)
+        # Load dataset
+        log_print(f"Loading {split} dataset...", log_file)
+        dataset = GenderDataset(args.data_dir, split=split, oversample_female=False)
 
-    # Run comprehensive evaluation
-    start_time = time.time()
+        test_loader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=args.batch_size,
+            shuffle=False,
+            num_workers=2
+        )
 
-    predictions, probabilities, labels, features = evaluate_model_comprehensive(
-        model, test_loader, device, log_file
-    )
+        log_print(f"Dataset split: {split}", log_file)
+        log_print(f"Total samples: {len(dataset)}", log_file)
+        class_dist = dataset.get_class_distribution()
+        log_print(f"Class distribution: Male={class_dist.get(0, 0)}, Female={class_dist.get(1, 0)}", log_file)
 
-    # Analyze performance
-    perf_results = analyze_performance(predictions, probabilities, labels, log_file)
+        # Run comprehensive evaluation
+        start_time = time.time()
 
-    # Analyze features
-    feature_results = analyze_features(features, labels, log_file)
+        predictions, probabilities, labels, features = evaluate_model_comprehensive(
+            model, test_loader, device, split, log_file
+        )
 
-    # Threshold analysis
-    thresh_results, best_thresh, best_f1 = threshold_analysis(probabilities, labels, log_file)
+        # Analyze performance
+        perf_results = analyze_performance(predictions, probabilities, labels, split, log_file)
 
-    # Show prediction examples
-    show_prediction_examples(model, dataset, device, args.num_examples, log_file)
+        # Analyze features
+        feature_results = analyze_features(features, labels, log_file)
 
-    test_time = time.time() - start_time
+        # Threshold analysis
+        thresh_results, best_thresh, best_f1 = threshold_analysis(probabilities, labels, log_file)
 
-    # Combine all results
-    all_results = {
-        **perf_results,
-        'threshold_results': thresh_results,
-        'best_threshold': best_thresh,
-        'best_f1': best_f1,
-        'feature_analysis': feature_results
-    }
+        # Show prediction examples
+        show_prediction_examples(model, dataset, device, args.num_examples, log_file)
 
-    log_print(f"\n🎉 Testing completed in {test_time:.1f} seconds", log_file)
-    log_print(f"🏆 Best performance: Accuracy={perf_results['accuracy']:.4f}, F1={perf_results['f1']:.4f}", log_file)
-    log_print(f"📊 ROC AUC: {perf_results['roc_auc']:.4f}", log_file)
-    log_print(f"🎯 Optimal threshold: {best_thresh:.2f} (F1={best_f1:.4f})", log_file)
+        test_time = time.time() - start_time
 
-    # Save results
-    save_results(all_results, args.output_dir, log_file)
+        # Store results for this split
+        all_results[split] = {
+            **perf_results,
+            'threshold_results': thresh_results,
+            'best_threshold': best_thresh,
+            'best_f1': best_f1,
+            'feature_analysis': feature_results,
+            'test_time': test_time
+        }
 
-    log_print(f"\n📝 Complete log saved to: {log_file}", log_file)
-    log_print("✅ Testing completed successfully!", log_file)
+        log_print(f"\n{split.upper()} evaluation completed in {test_time:.1f} seconds", log_file)
+        log_print(f"Best performance: Accuracy={perf_results['accuracy']:.4f}, F1={perf_results['f1']:.4f}", log_file)
+        log_print(f"ROC AUC: {perf_results['roc_auc']:.4f}", log_file)
+        log_print(f"Optimal threshold: {best_thresh:.2f} (F1={best_f1:.4f})", log_file)
+
+    # Print summary comparison
+    log_print(f"\n{'='*80}", log_file)
+    log_print("SUMMARY COMPARISON", log_file)
+    log_print(f"{'='*80}", log_file)
+
+    log_print("TRAINING SET RESULTS:", log_file)
+    train_results = all_results['train']
+    log_print(f"  Training Accuracy: {train_results['accuracy']:.4f} ({train_results['accuracy']*100:.2f}%)", log_file)
+    log_print(f"  Training F1 Score: {train_results['f1']:.4f} ({train_results['f1']*100:.2f}%)", log_file)
+    log_print(f"  Training Precision: {train_results['precision']:.4f} ({train_results['precision']*100:.2f}%)", log_file)
+    log_print(f"  Training Recall: {train_results['recall']:.4f} ({train_results['recall']*100:.2f}%)", log_file)
+
+    log_print("\nVALIDATION SET RESULTS:", log_file)
+    val_results = all_results['val']
+    log_print(f"  Validation Accuracy: {val_results['accuracy']:.4f} ({val_results['accuracy']*100:.2f}%)", log_file)
+    log_print(f"  Validation F1 Score: {val_results['f1']:.4f} ({val_results['f1']*100:.2f}%)", log_file)
+    log_print(f"  Validation Precision: {val_results['precision']:.4f} ({val_results['precision']*100:.2f}%)", log_file)
+    log_print(f"  Validation Recall: {val_results['recall']:.4f} ({val_results['recall']*100:.2f}%)", log_file)
+
+    # Save results for both splits
+    for split in ['train', 'val']:
+        split_output_dir = os.path.join(args.output_dir, f'{split}_results')
+        save_results(all_results[split], split_output_dir, log_file)
+
+    log_print(f"\nComplete log saved to: {log_file}", log_file)
+    log_print("Testing completed successfully!", log_file)
 
 if __name__ == "__main__":
     main()

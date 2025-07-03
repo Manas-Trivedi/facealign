@@ -403,7 +403,7 @@ def main():
     parser = argparse.ArgumentParser(description='Test Face Recognition Model')
     parser.add_argument('--model_path', type=str, default='checkpoints/final_model.pt',
                         help='Path to the trained model')
-    parser.add_argument('--data_dir', type=str, default='data/facecom/Task_B/',
+    parser.add_argument('--data_dir', type=str, default='Comsys-Hackathon5/Task_B/',
                         help='Path to data directory')
     parser.add_argument('--embedding_dim', type=int, default=512,
                         help='Embedding dimension')

@@ -141,7 +141,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device):
 
 def main():
     parser = argparse.ArgumentParser(description='Train Face Recognition Model')
-    parser.add_argument('--data_dir', type=str, default='data/facecom/Task_B/',
+    parser.add_argument('--data_dir', type=str, default='Comsys-Hackathon5/Task_B/',
                         help='Path to data directory')
     parser.add_argument('--epochs', type=int, default=25,
                         help='Number of epochs to train')

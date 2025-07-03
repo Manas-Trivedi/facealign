@@ -3,6 +3,28 @@
 ## COMSYS Hackathon-5, 2025 Submission
 **Author**: Manas Trivedi
 
+## Quick Start
+
+### Installation
+```bash
+pip install -r requirements.txt
+```
+
+### Training Models
+```bash
+# Task A - Gender Classification
+python train_a.py
+
+# Task B - Face Recognition
+python train_b.py
+```
+
+### Individual Testing
+```bash
+python test_gender_model.py    # Task A analysis
+python test_face_model.py          # Task B analysis
+```
+
 ## Solution Overview
 
 This project tackles one of the most challenging problems in computer vision: maintaining reliable face recognition and gender classification when visual conditions deteriorate. Real-world scenarios present images corrupted by motion blur, overexposure, fog, rain, low light, and uneven illumination - conditions that cause traditional models to fail.
@@ -108,37 +130,6 @@ The following performance visualizations demonstrate the robustness and effectiv
 
 > **Note**: All performance charts are generated automatically when running the test scripts (`test_gender_model.py` and `test_model.py`)
 
-## Quick Start
-
-### Installation
-```bash
-pip install -r requirements.txt
-```
-
-### Official Evaluation (For Judges)
-```bash
-python run_evaluation.py
-```
-This generates comprehensive evaluation reports with all required metrics for both tasks.
-
-### Training Models
-```bash
-# Task A - Gender Classification
-python train_a.py
-
-# Task B - Face Recognition
-python train_b.py
-```
-
-### Individual Testing
-```bash
-# Comprehensive analysis
-python run_all_tests.py
-
-# Task-specific testing
-python test_gender_model.py    # Task A analysis
-python test_model.py          # Task B analysis
-```
 
 ## Technical Approach
 
