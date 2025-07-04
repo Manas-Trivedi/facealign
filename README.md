@@ -39,7 +39,7 @@ I developed a robust system that maintains consistent performance across these d
 
 **Key Results:**
 - **Task A**: Gender Classification (Binary) - 96.21% accuracy achieved
-- **Task B**: Face Recognition (Identity Matching) - 89.10% accuracy with embedding-based approach
+- **Task B**: Face Recognition (Identity Matching) - 94.95% accuracy with embedding-based approach
 
 ## Technical Innovations
 
@@ -100,8 +100,7 @@ The gender classification model demonstrates strong robustness, achieving high p
 - **Overall Accuracy**: 96.21%
 - **Overall Precision**: 96.84%
 - **Overall Recall**: 87.62%
-- **Overall F1-Score**: 0.9200
-- **ROC AUC**: 0.9933
+- **Overall F1-Score**: 92.00%
 
 **Per-Class Metrics:**
 
@@ -113,9 +112,11 @@ The gender classification model demonstrates strong robustness, achieving high p
 ### Task B: Face Recognition
 Face recognition under adverse conditions presents significantly greater complexity, with the embedding-based approach achieving competitive results:
 - **Optimal Threshold**: 0.91 (determined through systematic evaluation)
-- **Top-1 Accuracy**: 89.10%
-- **Macro F1-Score**: 0.8910
-- **ROC AUC**: 94.43%
+- **Overall Accuracy**: 94.95%
+- **Overall Precision**: 97.65%
+- **Overall Recall**: 88.67%
+- **Overall F1-Score**: 92.94%
+
 
 These results demonstrate strong performance considering the challenging nature of identity matching under visual degradations.
 
