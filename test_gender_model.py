@@ -8,6 +8,10 @@ Tests the trained gender classification model with detailed logging and analysis
 import os
 import torch
 import torch.nn.functional as F
+import torch.utils.data
+import torchvision.transforms as transforms
+from torch.utils.data import Dataset
+from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
@@ -19,6 +23,64 @@ from datetime import datetime
 
 from models.gender_model import GenderClassifier
 from utils.gender_dataset import GenderDataset
+
+
+class TestGenderDataset(Dataset):
+    """Custom dataset class for test data that directly contains male/ and female/ subfolders"""
+
+    def __init__(self, data_dir):
+        self.data_dir = data_dir
+        self.samples = []
+
+        # Define transforms
+        self.transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                               std=[0.229, 0.224, 0.225])
+        ])
+
+        # Load samples from male and female folders
+        class_to_idx = {'male': 0, 'female': 1}
+
+        for class_name in ['male', 'female']:
+            class_dir = os.path.join(data_dir, class_name)
+            if not os.path.exists(class_dir):
+                raise ValueError(f"Directory not found: {class_dir}")
+
+            for img_name in os.listdir(class_dir):
+                if img_name.lower().endswith(('.jpg', '.jpeg', '.png')):
+                    img_path = os.path.join(class_dir, img_name)
+                    self.samples.append((img_path, class_to_idx[class_name]))
+
+        print(f"Test dataset loaded:")
+        print(f"  Male: {sum(1 for _, label in self.samples if label == 0)}")
+        print(f"  Female: {sum(1 for _, label in self.samples if label == 1)}")
+        print(f"  Total: {len(self.samples)}")
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        img_path, label = self.samples[idx]
+
+        try:
+            # Load image
+            image = Image.open(img_path).convert('RGB')
+            image = self.transform(image)
+            return image, label
+        except Exception as e:
+            print(f"Error loading image {img_path}: {e}")
+            # Return a dummy image if loading fails
+            dummy_image = torch.zeros(3, 224, 224)
+            return dummy_image, label
+
+    def get_class_distribution(self):
+        """Get class distribution for logging"""
+        dist = {}
+        for _, label in self.samples:
+            dist[label] = dist.get(label, 0) + 1
+        return dist
 
 def log_print(message, log_file=None):
     """Print and optionally log message"""
@@ -449,8 +511,8 @@ def main():
     parser = argparse.ArgumentParser(description='Test Gender Classification Model')
     parser.add_argument('--model_path', type=str, default='checkpoints/gender_model.pt',
                         help='Path to the trained model')
-    parser.add_argument('--data_dir', type=str, default='Comsys-Hackathon5/Task_A/',
-                        help='Path to data directory')
+    parser.add_argument('--data_dir', type=str, default='Comsys-Hackathon5/Task_A/val',
+                        help='Path to test data directory (containing male/ and female/ subfolders)')
     parser.add_argument('--batch_size', type=int, default=32,
                         help='Batch size for evaluation')
     parser.add_argument('--output_dir', type=str, default='test_results_gender/',
@@ -496,89 +558,67 @@ def main():
         log_print(f"ERROR: Failed to load model: {e}", log_file)
         return
 
-    # Evaluate on both training and validation sets
-    all_results = {}
-
-    for split in ['train', 'val']:
-        log_print(f"\n{'='*80}", log_file)
-        log_print(f"EVALUATING ON {split.upper()} SET", log_file)
-        log_print(f"{'='*80}", log_file)
-
-        # Load dataset
-        log_print(f"Loading {split} dataset...", log_file)
-        dataset = GenderDataset(args.data_dir, split=split, oversample_female=False)
-
-        test_loader = torch.utils.data.DataLoader(
-            dataset,
-            batch_size=args.batch_size,
-            shuffle=False,
-            num_workers=2
-        )
-
-        log_print(f"Dataset split: {split}", log_file)
-        log_print(f"Total samples: {len(dataset)}", log_file)
-        class_dist = dataset.get_class_distribution()
-        log_print(f"Class distribution: Male={class_dist.get(0, 0)}, Female={class_dist.get(1, 0)}", log_file)
-
-        # Run comprehensive evaluation
-        start_time = time.time()
-
-        predictions, probabilities, labels, features = evaluate_model_comprehensive(
-            model, test_loader, device, split, log_file
-        )
-
-        # Analyze performance
-        perf_results = analyze_performance(predictions, probabilities, labels, split, log_file)
-
-        # Analyze features
-        feature_results = analyze_features(features, labels, log_file)
-
-        # Threshold analysis
-        thresh_results, best_thresh, best_f1 = threshold_analysis(probabilities, labels, log_file)
-
-        # Show prediction examples
-        show_prediction_examples(model, dataset, device, args.num_examples, log_file)
-
-        test_time = time.time() - start_time
-
-        # Store results for this split
-        all_results[split] = {
-            **perf_results,
-            'threshold_results': thresh_results,
-            'best_threshold': best_thresh,
-            'best_f1': best_f1,
-            'feature_analysis': feature_results,
-            'test_time': test_time
-        }
-
-        log_print(f"\n{split.upper()} evaluation completed in {test_time:.1f} seconds", log_file)
-        log_print(f"Best performance: Accuracy={perf_results['accuracy']:.4f}, F1={perf_results['f1']:.4f}", log_file)
-        log_print(f"ROC AUC: {perf_results['roc_auc']:.4f}", log_file)
-        log_print(f"Optimal threshold: {best_thresh:.2f} (F1={best_f1:.4f})", log_file)
-
-    # Print summary comparison
+    # Evaluate on test set only
     log_print(f"\n{'='*80}", log_file)
-    log_print("SUMMARY COMPARISON", log_file)
+    log_print(f"EVALUATING ON TEST SET", log_file)
     log_print(f"{'='*80}", log_file)
 
-    log_print("TRAINING SET RESULTS:", log_file)
-    train_results = all_results['train']
-    log_print(f"  Training Accuracy: {train_results['accuracy']:.4f} ({train_results['accuracy']*100:.2f}%)", log_file)
-    log_print(f"  Training F1 Score: {train_results['f1']:.4f} ({train_results['f1']*100:.2f}%)", log_file)
-    log_print(f"  Training Precision: {train_results['precision']:.4f} ({train_results['precision']*100:.2f}%)", log_file)
-    log_print(f"  Training Recall: {train_results['recall']:.4f} ({train_results['recall']*100:.2f}%)", log_file)
+    # Load dataset
+    log_print(f"Loading test dataset...", log_file)
 
-    log_print("\nVALIDATION SET RESULTS:", log_file)
-    val_results = all_results['val']
-    log_print(f"  Validation Accuracy: {val_results['accuracy']:.4f} ({val_results['accuracy']*100:.2f}%)", log_file)
-    log_print(f"  Validation F1 Score: {val_results['f1']:.4f} ({val_results['f1']*100:.2f}%)", log_file)
-    log_print(f"  Validation Precision: {val_results['precision']:.4f} ({val_results['precision']*100:.2f}%)", log_file)
-    log_print(f"  Validation Recall: {val_results['recall']:.4f} ({val_results['recall']*100:.2f}%)", log_file)
+    # Create test dataset
+    test_dataset = TestGenderDataset(args.data_dir)
 
-    # Save results for both splits
-    for split in ['train', 'val']:
-        split_output_dir = os.path.join(args.output_dir, f'{split}_results')
-        save_results(all_results[split], split_output_dir, log_file)
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=0  # Set to 0 to avoid multiprocessing issues
+    )
+
+    log_print(f"Test dataset loaded", log_file)
+    log_print(f"Total samples: {len(test_dataset)}", log_file)
+    class_dist = test_dataset.get_class_distribution()
+    log_print(f"Class distribution: Male={class_dist.get(0, 0)}, Female={class_dist.get(1, 0)}", log_file)
+
+    # Run comprehensive evaluation
+    start_time = time.time()
+
+    predictions, probabilities, labels, features = evaluate_model_comprehensive(
+        model, test_loader, device, 'test', log_file
+    )
+
+    # Analyze performance
+    perf_results = analyze_performance(predictions, probabilities, labels, 'test', log_file)
+
+    # Analyze features
+    feature_results = analyze_features(features, labels, log_file)
+
+    # Threshold analysis
+    thresh_results, best_thresh, best_f1 = threshold_analysis(probabilities, labels, log_file)
+
+    # Show prediction examples
+    show_prediction_examples(model, test_dataset, device, args.num_examples, log_file)
+
+    test_time = time.time() - start_time
+
+    # Store results
+    test_results = {
+        **perf_results,
+        'threshold_results': thresh_results,
+        'best_threshold': best_thresh,
+        'best_f1': best_f1,
+        'feature_analysis': feature_results,
+        'test_time': test_time
+    }
+
+    log_print(f"\nTest evaluation completed in {test_time:.1f} seconds", log_file)
+    log_print(f"Performance: Accuracy={perf_results['accuracy']:.4f}, F1={perf_results['f1']:.4f}", log_file)
+    log_print(f"ROC AUC: {perf_results['roc_auc']:.4f}", log_file)
+    log_print(f"Optimal threshold: {best_thresh:.2f} (F1={best_f1:.4f})", log_file)
+
+    # Save results
+    save_results(test_results, args.output_dir, log_file)
 
     log_print(f"\nComplete log saved to: {log_file}", log_file)
     log_print("Testing completed successfully!", log_file)
