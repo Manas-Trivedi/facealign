@@ -7,8 +7,20 @@
 
 ### Installation
 ```bash
+python3 -m venv venv
+source ./venv/bin/activate
 pip install -r requirements.txt
 ```
+
+### Pretrained Model Testing
+```bash
+python test_gender_model.py --data_dir /path/to/dataset    # Task A analysis
+python test_face_model.py --data_dir /path/to/dataset          # Task B analysis
+```
+
+* replace /path/to/dataset with the actual path for task a this means the folder
+containing male and female subfolders and for task b its the folder containing
+identity subfolders (each with a clear reference image and a distortion subfolder) *
 
 ### Training Models
 ```bash
@@ -17,12 +29,6 @@ python train_a.py
 
 # Task B - Face Recognition
 python train_b.py
-```
-
-### Individual Testing
-```bash
-python test_gender_model.py    # Task A analysis
-python test_face_model.py          # Task B analysis
 ```
 
 ## Solution Overview
@@ -128,7 +134,7 @@ The following performance visualizations demonstrate the robustness and effectiv
 ![Similarity Analysis](plots/similarity_distribution.png)
 *Cosine similarity distributions for positive and negative pairs, demonstrating clear separability*
 
-> **Note**: All performance charts are generated automatically when running the test scripts (`test_gender_model.py` and `test_model.py`)
+> **Note**: All performance charts are generated automatically when running the test scripts (`test_gender_model.py` and `test_face_model.py`)
 
 
 ## Technical Approach
@@ -163,7 +169,7 @@ utils/                    # Dataset utilities
 train_a.py               # Gender classification training
 train_b.py               # Face recognition training
 test_gender_model.py     # Task A evaluation
-test_model.py            # Task B evaluation
+test_face_model.py       # Task B evaluation
 run_evaluation.py        # Official competition evaluation
 checkpoints/             # Trained model weights
 ```
