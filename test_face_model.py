@@ -1,449 +1,448 @@
-#type: ignore
 #!/usr/bin/env python3
 """
-Comprehensive Face Recognition Model Testing Script
-Tests the trained face embedding model with detailed logging and analysis.
+Face Verification Model Testing Script
+Tests the trained face embedding model for face verification tasks.
+Compares clear/reference images with positive distortions and negative samples.
 """
 
 import os
 import torch
 import torch.nn.functional as F
+import torch.utils.data
+import torchvision.transforms as transforms
+from torch.utils.data import Dataset
+from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
-from sklearn.metrics import roc_curve, auc, confusion_matrix
+from sklearn.metrics import roc_curve, auc, confusion_matrix, classification_report
 import argparse
 from tqdm import tqdm
 import time
-import logging
 from datetime import datetime
 
 from models.face_model import FaceEmbeddingModel, cosine_similarity
-from utils.face_dataset import ValidationDataset, get_transforms
+from utils.face_dataset import get_transforms
 
-# Setup logging
-def setup_logging(log_file):
-    """Setup comprehensive logging"""
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
-    )
-    return logging.getLogger(__name__)
 
-def log_task_evaluation_criteria(logger):
-    """Log the official evaluation criteria for Task B"""
-    logger.info("=" * 80)
-    logger.info("TASK B - FACE RECOGNITION")
-    logger.info("=" * 80)
-    logger.info("Objective: Assign each face image to a correct person identity")
-    logger.info("           from a known set of individuals.")
-    logger.info("")
-    logger.info("OFFICIAL EVALUATION METRICS:")
-    logger.info("  • Top-1 Accuracy      - Percentage of correctly identified faces")
-    logger.info("  • Macro-averaged F1   - F1-Score averaged across all identities")
-    logger.info("=" * 80)
+class FaceVerificationDataset(Dataset):
+    """Custom dataset class for face verification testing"""
 
-def compute_embeddings_batch(model, images, device, batch_size=32):
-    """Compute embeddings for a list of images with batch processing"""
+    def __init__(self, data_dir, num_positive=3, num_negative=5):
+        """
+        Args:
+            data_dir: Directory containing person folders with clear images and distortion subfolders
+            num_positive: Number of positive samples per identity (from distortion folder)
+            num_negative: Number of negative samples per identity (from other identities)
+
+        Expected structure:
+        data_dir/
+        ├── person1/
+        │   ├── clear_image.jpg (reference)
+        │   └── distortion/
+        │       ├── distorted1.jpg (positive sample)
+        │       ├── distorted2.jpg (positive sample)
+        │       └── ...
+        ├── person2/
+        │   ├── clear_image.jpg (reference)
+        │   └── distortion/
+        │       ├── distorted1.jpg (positive sample)
+        │       └── ...
+        └── ...
+        """
+        self.data_dir = data_dir
+        self.num_positive = num_positive
+        self.num_negative = num_negative
+        self.samples = []
+
+        # Define transforms
+        self.transform = get_transforms(train=False)
+
+        # Load verification pairs
+        self._load_verification_pairs()
+
+    def _load_verification_pairs(self):
+        """Load verification pairs from the dataset"""
+        print(f"Loading face verification dataset from: {self.data_dir}")
+
+        # Structure: data_dir/identity_name/clear_image.jpg and data_dir/identity_name/distortion/distorted_images.jpg
+        identity_dirs = [d for d in os.listdir(self.data_dir)
+                        if os.path.isdir(os.path.join(self.data_dir, d))]
+
+        for identity in identity_dirs:
+            identity_path = os.path.join(self.data_dir, identity)
+
+            # Find reference (clear) image in the person folder
+            clear_images = [f for f in os.listdir(identity_path)
+                           if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+
+            if not clear_images:
+                print(f"Warning: No clear image found for identity {identity}")
+                continue
+
+            # Use first clear image as reference
+            reference_img = os.path.join(identity_path, clear_images[0])
+
+            # Look for distortion folder
+            distortion_path = os.path.join(identity_path, 'distortion')
+            if not os.path.exists(distortion_path):
+                print(f"Warning: No distortion folder found for identity {identity}")
+                continue
+
+            # Get distorted images for positive pairs
+            distorted_images = [f for f in os.listdir(distortion_path)
+                              if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+
+            if not distorted_images:
+                print(f"Warning: No distorted images found for identity {identity}")
+                continue
+
+            # Create positive pairs with distorted images
+            positive_imgs = distorted_images[:min(len(distorted_images), self.num_positive)]
+            for pos_img in positive_imgs:
+                pos_path = os.path.join(distortion_path, pos_img)
+                self.samples.append((reference_img, pos_path, 1, identity))  # 1 = positive
+
+            # Create negative pairs with other identities' clear images
+            other_identities = [other for other in identity_dirs if other != identity]
+            neg_count = 0
+
+            for other_identity in other_identities:
+                if neg_count >= self.num_negative:
+                    break
+
+                other_path = os.path.join(self.data_dir, other_identity)
+                other_clear_images = [f for f in os.listdir(other_path)
+                                    if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+
+                if other_clear_images:
+                    neg_img = os.path.join(other_path, other_clear_images[0])
+                    self.samples.append((reference_img, neg_img, 0, f"{identity}_vs_{other_identity}"))  # 0 = negative
+                    neg_count += 1
+
+        print(f"Verification dataset loaded:")
+        print(f"  Positive pairs: {sum(1 for _, _, label, _ in self.samples if label == 1)}")
+        print(f"  Negative pairs: {sum(1 for _, _, label, _ in self.samples if label == 0)}")
+        print(f"  Total pairs: {len(self.samples)}")
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        ref_path, test_path, label, identity = self.samples[idx]
+
+        try:
+            # Load reference image
+            ref_image = Image.open(ref_path).convert('RGB')
+            ref_image = self.transform(ref_image)
+
+            # Load test image
+            test_image = Image.open(test_path).convert('RGB')
+            test_image = self.transform(test_image)
+
+            return ref_image, test_image, label, identity
+        except Exception as e:
+            print(f"Error loading images {ref_path}, {test_path}: {e}")
+            # Return dummy images if loading fails
+            dummy_image = torch.zeros(3, 224, 224)
+            return dummy_image, dummy_image, label, identity
+
+    def get_class_distribution(self):
+        """Get class distribution for logging"""
+        dist = {}
+        for _, _, label, _ in self.samples:
+            dist[label] = dist.get(label, 0) + 1
+        return dist
+
+
+def log_print(message, log_file=None):
+    """Print and optionally log message"""
+    print(message)
+    if log_file:
+        with open(log_file, 'a') as f:
+            f.write(message + '\n')
+
+def log_task_evaluation_criteria(log_file=None):
+    """Log the official evaluation criteria for face verification"""
+    log_print("=" * 80, log_file)
+    log_print("FACE VERIFICATION TESTING", log_file)
+    log_print("=" * 80, log_file)
+    log_print("Objective: Verify if two face images belong to the same person", log_file)
+    log_print("           by comparing embeddings of reference and test images.", log_file)
+    log_print("", log_file)
+    log_print("EVALUATION METRICS:", log_file)
+    log_print("  • Accuracy    - Overall verification accuracy", log_file)
+    log_print("  • Precision   - True positives / (True positives + False positives)", log_file)
+    log_print("  • Recall      - True positives / (True positives + False negatives)", log_file)
+    log_print("  • F1-Score    - Harmonic mean of Precision and Recall", log_file)
+    log_print("  • ROC AUC     - Area under ROC curve", log_file)
+    log_print("=" * 80, log_file)
+
+def compute_face_verification(model, test_loader, device, log_file=None):
+    """Compute face verification results"""
+    log_print("=== FACE VERIFICATION EVALUATION ===", log_file)
+
     model.eval()
-    embeddings = []
+    all_similarities = []
+    all_labels = []
+    all_identities = []
 
-    logger.info(f"Computing embeddings for {len(images)} images in batches of {batch_size}")
+    log_print(f"Evaluating on {len(test_loader)} batches...", log_file)
 
     with torch.no_grad():
-        for i in tqdm(range(0, len(images), batch_size), desc="Computing embeddings"):
-            batch = images[i:i+batch_size]
-            batch_tensor = torch.stack(batch).to(device)
-            batch_embeddings = model(batch_tensor)
+        for batch_idx, (ref_images, test_images, labels, identities) in enumerate(tqdm(test_loader, desc="Computing similarities")):
+            ref_images = ref_images.to(device)
+            test_images = test_images.to(device)
 
-            # Check for NaN embeddings
-            if torch.isnan(batch_embeddings).any():
-                logger.error(f"NaN embeddings detected in batch {i//batch_size}")
-                return None
+            # Get embeddings
+            ref_embeddings = model(ref_images)
+            test_embeddings = model(test_images)
 
-            embeddings.append(batch_embeddings.cpu())
+            # Compute similarities
+            similarities = cosine_similarity(ref_embeddings, test_embeddings)
 
-    return torch.cat(embeddings, dim=0)
+            # Store results
+            all_similarities.extend(similarities.cpu().numpy())
+            all_labels.extend(labels.numpy())
+            all_identities.extend(identities)
 
-def analyze_embeddings(embeddings, labels, logger):
-    """Analyze embedding properties"""
-    logger.info("=== EMBEDDING ANALYSIS ===")
+    all_similarities = np.array(all_similarities)
+    all_labels = np.array(all_labels)
 
-    # Basic statistics
-    mean_norm = torch.norm(embeddings, p=2, dim=1).mean().item()
-    std_norm = torch.norm(embeddings, p=2, dim=1).std().item()
-    logger.info(f"Embedding L2 norms - Mean: {mean_norm:.4f}, Std: {std_norm:.4f}")
+    log_print(f"Verification completed on {len(all_labels)} pairs", log_file)
 
-    # Check for NaN/Inf
-    nan_count = torch.isnan(embeddings).sum().item()
-    inf_count = torch.isinf(embeddings).sum().item()
-    logger.info(f"NaN values: {nan_count}, Inf values: {inf_count}")
+    return all_similarities, all_labels, all_identities
 
-    if nan_count > 0 or inf_count > 0:
-        logger.error("❌ Embeddings contain NaN or Inf values!")
-        return False
+def analyze_verification_performance(similarities, labels, identities, log_file=None):
+    """Analyze face verification performance"""
+    log_print("\n" + "=" * 60, log_file)
+    log_print("FACE VERIFICATION RESULTS", log_file)
+    log_print("=" * 60, log_file)
 
-    # Embedding distribution
-    flat_embeddings = embeddings.flatten()
-    logger.info(f"Embedding values - Min: {flat_embeddings.min():.4f}, Max: {flat_embeddings.max():.4f}")
-    logger.info(f"Embedding values - Mean: {flat_embeddings.mean():.4f}, Std: {flat_embeddings.std():.4f}")
-
-    # Pairwise similarity analysis
-    if len(embeddings) > 1:
-        # Sample some pairs for analysis
-        sample_size = min(100, len(embeddings))
-        sample_indices = torch.randperm(len(embeddings))[:sample_size]
-        sample_embeddings = embeddings[sample_indices]
-
-        # Compute pairwise similarities
-        similarities = F.cosine_similarity(
-            sample_embeddings.unsqueeze(1),
-            sample_embeddings.unsqueeze(0),
-            dim=2
-        )
-
-        # Remove diagonal (self-similarities)
-        mask = ~torch.eye(len(sample_embeddings), dtype=torch.bool)
-        off_diagonal_sims = similarities[mask]
-
-        logger.info(f"Pairwise similarities - Min: {off_diagonal_sims.min():.4f}, Max: {off_diagonal_sims.max():.4f}")
-        logger.info(f"Pairwise similarities - Mean: {off_diagonal_sims.mean():.4f}, Std: {off_diagonal_sims.std():.4f}")
-
-    logger.info("✅ Embedding analysis completed successfully")
-    return True
-
-def comprehensive_validation(model, val_dataset, device, thresholds, num_queries=500, logger=None):
-    """Comprehensive validation with multiple metrics and threshold analysis"""
-    logger.info("=== COMPREHENSIVE VALIDATION ===")
-
-    # Get gallery embeddings
-    logger.info("Computing gallery embeddings...") #type: ignore
-    gallery_imgs, gallery_identities = val_dataset.get_gallery()
-    gallery_embeddings = compute_embeddings_batch(model, gallery_imgs, device)
-
-    if gallery_embeddings is None:
-        logger.error("Failed to compute gallery embeddings") #type: ignore
-        return None
-
-    logger.info(f"Gallery: {len(gallery_embeddings)} embeddings computed") #type: ignore
-
-    # Analyze gallery embeddings
-    if not analyze_embeddings(gallery_embeddings, gallery_identities, logger):
-        logger.error("Gallery embeddings failed analysis")
-        return None
-
-    # Create validation queries
-    logger.info(f"Creating {num_queries} validation queries...")
-    query_imgs, query_labels, query_info = val_dataset.create_validation_batch(num_queries)
-    query_embeddings = compute_embeddings_batch(model, query_imgs, device)
-
-    if query_embeddings is None:
-        logger.error("Failed to compute query embeddings")
-        return None
-
-    logger.info(f"Queries: {len(query_embeddings)} embeddings computed")
-
-    # Analyze query embeddings
-    if not analyze_embeddings(query_embeddings, query_labels, logger):
-        logger.error("Query embeddings failed analysis")
-        return None
-
-    # Compute all similarities
-    logger.info("Computing similarities between queries and gallery...")
-    all_similarities = []
-    all_predictions = {thresh: [] for thresh in thresholds}
-    best_matches = []
-
-    for i, query_emb in enumerate(tqdm(query_embeddings, desc="Processing queries")):
-        # Compute similarities with all gallery images
-        similarities = cosine_similarity(
-            query_emb.unsqueeze(0).repeat(len(gallery_embeddings), 1),
-            gallery_embeddings
-        )
-
-        # Check for NaN similarities
-        if torch.isnan(similarities).any():
-            logger.error(f"NaN similarities detected for query {i}")
-            return None
-
-        # Best match
-        max_similarity = similarities.max().item()
-        best_match_idx = similarities.argmax().item()
-        best_match_identity = gallery_identities[best_match_idx]
-
-        all_similarities.append(max_similarity)
-        best_matches.append(best_match_identity)
-
-        # Predictions for all thresholds
-        for thresh in thresholds:
-            pred = 1 if max_similarity > thresh else 0
-            all_predictions[thresh].append(pred)
-
-    # Analyze similarities
-    logger.info("=== SIMILARITY ANALYSIS ===")
-    logger.info(f"Similarity range: {min(all_similarities):.4f} - {max(all_similarities):.4f}")
-    logger.info(f"Similarity mean: {np.mean(all_similarities):.4f} ± {np.std(all_similarities):.4f}")
+    # Similarity analysis
+    log_print("SIMILARITY ANALYSIS:", log_file)
+    log_print(f"  Similarity range: {np.min(similarities):.4f} - {np.max(similarities):.4f}", log_file)
+    log_print(f"  Mean similarity: {np.mean(similarities):.4f} ± {np.std(similarities):.4f}", log_file)
 
     # Separate by ground truth
-    pos_similarities = [all_similarities[i] for i in range(len(all_similarities)) if query_labels[i] == 1]
-    neg_similarities = [all_similarities[i] for i in range(len(all_similarities)) if query_labels[i] == 0]
+    positive_similarities = similarities[labels == 1]
+    negative_similarities = similarities[labels == 0]
 
-    logger.info(f"Positive pairs similarity: {np.mean(pos_similarities):.4f} ± {np.std(pos_similarities):.4f}")
-    logger.info(f"Negative pairs similarity: {np.mean(neg_similarities):.4f} ± {np.std(neg_similarities):.4f}")
-    logger.info(f"Similarity gap: {np.mean(pos_similarities) - np.mean(neg_similarities):.4f}")
+    log_print(f"  Positive pairs: {np.mean(positive_similarities):.4f} ± {np.std(positive_similarities):.4f}", log_file)
+    log_print(f"  Negative pairs: {np.mean(negative_similarities):.4f} ± {np.std(negative_similarities):.4f}", log_file)
+    log_print(f"  Separation: {np.mean(positive_similarities) - np.mean(negative_similarities):.4f}", log_file)
 
-    # Compute metrics for all thresholds
+    # Threshold analysis
+    thresholds = np.arange(0.1, 1.0, 0.05)
     results = []
-    logger.info("\n" + "=" * 80)
-    logger.info("OFFICIAL TASK B EVALUATION RESULTS")
-    logger.info("=" * 80)
-    logger.info("📊 THRESHOLD ANALYSIS FOR FACE RECOGNITION:")
-    logger.info("Threshold | Top-1 Acc | Precision | Recall | F1-Score")
-    logger.info("-" * 60)
+
+    log_print("\nTHRESHOLD ANALYSIS:", log_file)
+    log_print("Threshold | Accuracy | Precision | Recall | F1-Score", log_file)
+    log_print("-" * 50, log_file)
 
     best_f1 = 0.0
-    best_threshold = thresholds[0]
+    best_threshold = 0.5
 
     for thresh in thresholds:
-        predictions = all_predictions[thresh]
+        predictions = (similarities >= thresh).astype(int)
 
-        accuracy = accuracy_score(query_labels, predictions)
-        precision = precision_score(query_labels, predictions, average='binary', zero_division=0)
-        recall = recall_score(query_labels, predictions, average='binary', zero_division=0)
-        f1 = f1_score(query_labels, predictions, average='binary', zero_division=0)
+        accuracy = accuracy_score(labels, predictions)
+        precision = precision_score(labels, predictions, average='binary', zero_division=0)
+        recall = recall_score(labels, predictions, average='binary', zero_division=0)
+        f1 = f1_score(labels, predictions, average='binary', zero_division=0)
 
-        # Calculate macro-averaged F1 (required for Task B)
-        macro_f1 = f1_score(query_labels, predictions, average='macro', zero_division=0)
-
-        logger.info(f"{thresh:8.3f} | {accuracy:8.4f} | {precision:9.4f} | {recall:6.4f} | {f1:8.4f}")
+        log_print(f"{thresh:8.2f} | {accuracy:8.4f} | {precision:9.4f} | {recall:6.4f} | {f1:8.4f}", log_file)
 
         results.append({
             'threshold': thresh,
-            'top1_accuracy': accuracy,  # Task B: Top-1 Accuracy
+            'accuracy': accuracy,
             'precision': precision,
             'recall': recall,
-            'f1': f1,
-            'macro_f1': macro_f1  # Task B: Macro-averaged F1
+            'f1': f1
         })
 
         if f1 > best_f1:
             best_f1 = f1
             best_threshold = thresh
 
-    logger.info(f"\n🏆 Best threshold: {best_threshold} with F1: {best_f1:.4f}")
-
-    # Log official Task B metrics for best threshold
-    best_result = next((r for r in results if r['threshold'] == best_threshold), results[-1])
-    logger.info(f"\n📊 OFFICIAL TASK B METRICS (Threshold: {best_threshold}):")
-    logger.info(f"   Top-1 Accuracy:      {best_result['top1_accuracy']:.4f} ({best_result['top1_accuracy']*100:.2f}%)")
-    logger.info(f"   Macro-averaged F1:   {best_result['macro_f1']:.4f}")
-
-    # Detailed analysis for best threshold
-    logger.info(f"\n=== DETAILED ANALYSIS (Threshold: {best_threshold}) ===")
-    best_predictions = all_predictions[best_threshold]
-
-    # Confusion matrix
-    cm = confusion_matrix(query_labels, best_predictions)
-    tn, fp, fn, tp = cm.ravel()
-
-    logger.info(f"Confusion Matrix:")
-    logger.info(f"  True Negatives:  {tn:4d}  |  False Positives: {fp:4d}")
-    logger.info(f"  False Negatives: {fn:4d}  |  True Positives:  {tp:4d}")
-
-    # Per-split analysis
-    val_indices = [i for i, info in enumerate(query_info) if info['split'] == 'val']
-    train_indices = [i for i, info in enumerate(query_info) if info['split'] == 'train']
-
-    if val_indices:
-        val_labels = [query_labels[i] for i in val_indices]
-        val_preds = [best_predictions[i] for i in val_indices]
-        val_acc = accuracy_score(val_labels, val_preds)
-        val_f1 = f1_score(val_labels, val_preds, average='binary', zero_division=0)
-        logger.info(f"Validation split accuracy: {val_acc:.4f}, F1: {val_f1:.4f}")
-
-    if train_indices:
-        train_labels = [query_labels[i] for i in train_indices]
-        train_preds = [best_predictions[i] for i in train_indices]
-        train_acc = accuracy_score(train_labels, train_preds)
-        train_f1 = f1_score(train_labels, train_preds, average='binary', zero_division=0)
-        logger.info(f"Train split accuracy: {train_acc:.4f}, F1: {train_f1:.4f}")
-
-    # ROC analysis
-    logger.info("\n=== ROC ANALYSIS ===")
-    fpr, tpr, roc_thresholds = roc_curve(query_labels, all_similarities)
+    # ROC Analysis
+    fpr, tpr, _ = roc_curve(labels, similarities)
     roc_auc = auc(fpr, tpr)
-    logger.info(f"ROC AUC: {roc_auc:.4f}")
+
+    log_print(f"\nBest threshold: {best_threshold:.2f} with F1: {best_f1:.4f}", log_file)
+    log_print(f"ROC AUC: {roc_auc:.4f}", log_file)
+
+    # Confusion Matrix for best threshold
+    best_predictions = (similarities >= best_threshold).astype(int)
+    cm = confusion_matrix(labels, best_predictions)
+
+    log_print("\nCONFUSION MATRIX (Best Threshold):", log_file)
+    log_print(f"              Predicted", log_file)
+    log_print(f"           Same  Different", log_file)
+    log_print(f"Actual Same  {cm[1,1]:4d}   {cm[1,0]:4d}", log_file)
+    log_print(f"   Different {cm[0,1]:4d}   {cm[0,0]:4d}", log_file)
+
+    log_print("=" * 60, log_file)
 
     return {
-        'results': results,
+        'threshold_results': results,
         'best_threshold': best_threshold,
         'best_f1': best_f1,
-        'best_result': best_result,  # Add the best result for easy access
-        'similarities': all_similarities,
-        'labels': query_labels,
-        'query_info': query_info,
         'roc_auc': roc_auc,
         'fpr': fpr,
         'tpr': tpr,
-        'roc_thresholds': roc_thresholds
+        'confusion_matrix': cm,
+        'similarities': similarities,
+        'labels': labels
     }
 
-def save_results(results, output_dir, logger):
-    """Save results to files"""
-    logger.info("=== SAVING RESULTS ===")
+def save_verification_results(results, output_dir, log_file=None):
+    """Save verification results and create visualizations"""
+    log_print("=== SAVING RESULTS ===", log_file)
 
     os.makedirs(output_dir, exist_ok=True)
 
-    # Save metrics table as simple text file
-    txt_path = os.path.join(output_dir, 'threshold_analysis.txt')
-    with open(txt_path, 'w') as f:
-        f.write("TASK B - FACE RECOGNITION EVALUATION RESULTS\n")
+    # Save metrics summary
+    metrics_path = os.path.join(output_dir, 'verification_metrics.txt')
+    with open(metrics_path, 'w') as f:
+        f.write("FACE VERIFICATION EVALUATION RESULTS\n")
         f.write("=" * 60 + "\n")
-        f.write("Objective: Assign each face image to correct person identity\n")
-        f.write("           from a known set of individuals\n\n")
+        f.write("Objective: Verify if two face images belong to the same person\n")
+        f.write("           by comparing embeddings of reference and test images\n\n")
 
-        f.write("OFFICIAL EVALUATION METRICS:\n")
-        f.write(f"Top-1 Accuracy:      {results['best_result']['top1_accuracy']:.4f} ({results['best_result']['top1_accuracy']*100:.2f}%)\n")
-        f.write(f"Macro-averaged F1:   {results['best_result']['macro_f1']:.4f}\n\n")
+        f.write("PERFORMANCE METRICS:\n")
+        best_result = next((r for r in results['threshold_results'] if r['threshold'] == results['best_threshold']), results['threshold_results'][-1])
+        f.write(f"Best Threshold: {results['best_threshold']:.2f}\n")
+        f.write(f"Accuracy:  {best_result['accuracy']:.4f} ({best_result['accuracy']*100:.2f}%)\n")
+        f.write(f"Precision: {best_result['precision']:.4f} ({best_result['precision']*100:.2f}%)\n")
+        f.write(f"Recall:    {best_result['recall']:.4f} ({best_result['recall']*100:.2f}%)\n")
+        f.write(f"F1-Score:  {best_result['f1']:.4f} ({best_result['f1']*100:.2f}%)\n")
+        f.write(f"ROC AUC:   {results['roc_auc']:.4f}\n")
 
-        f.write("THRESHOLD ANALYSIS:\n")
-        f.write("Threshold,Top1_Accuracy,Precision,Recall,F1,Macro_F1\n")
-        for r in results['results']:
-            f.write(f"{r['threshold']:.4f},{r['top1_accuracy']:.4f},{r['precision']:.4f},{r['recall']:.4f},{r['f1']:.4f},{r['macro_f1']:.4f}\n")
-    logger.info(f"Threshold analysis saved to: {txt_path}")
+    log_print(f"Verification metrics saved to: {metrics_path}", log_file)
 
-    # Save plots
+    # Save threshold analysis
+    thresh_path = os.path.join(output_dir, 'threshold_analysis.txt')
+    with open(thresh_path, 'w') as f:
+        f.write("Threshold,Accuracy,Precision,Recall,F1\n")
+        for r in results['threshold_results']:
+            f.write(f"{r['threshold']:.2f},{r['accuracy']:.4f},{r['precision']:.4f},{r['recall']:.4f},{r['f1']:.4f}\n")
+
+    log_print(f"Threshold analysis saved to: {thresh_path}", log_file)
+
+    # Create visualizations
     try:
-        plt.style.use('default')  # Use default style instead of seaborn
-    except:
-        pass
+        plt.style.use('default')
 
-    # 1. Threshold vs Metrics plot
-    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-    fig.suptitle('Model Performance Analysis', fontsize=16)
+        # 1. Performance analysis plots
+        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+        fig.suptitle('Face Verification Performance Analysis', fontsize=16)
 
-    thresholds = [r['threshold'] for r in results['results']]
+        # Threshold vs metrics
+        thresholds = [r['threshold'] for r in results['threshold_results']]
 
-    # Accuracy
-    axes[0, 0].plot(thresholds, [r['top1_accuracy'] for r in results['results']], 'b-o')
-    axes[0, 0].set_title('Top-1 Accuracy vs Threshold')
-    axes[0, 0].set_xlabel('Threshold')
-    axes[0, 0].set_ylabel('Top-1 Accuracy')
-    axes[0, 0].grid(True)
+        axes[0, 0].plot(thresholds, [r['accuracy'] for r in results['threshold_results']], 'b-o', label='Accuracy')
+        axes[0, 0].plot(thresholds, [r['f1'] for r in results['threshold_results']], 'r-o', label='F1-Score')
+        axes[0, 0].axvline(results['best_threshold'], color='black', linestyle='--', alpha=0.7, label=f'Best: {results["best_threshold"]:.2f}')
+        axes[0, 0].set_title('Performance vs Threshold')
+        axes[0, 0].set_xlabel('Threshold')
+        axes[0, 0].set_ylabel('Score')
+        axes[0, 0].legend()
+        axes[0, 0].grid(True)
 
-    # F1 Score
-    axes[0, 1].plot(thresholds, [r['macro_f1'] for r in results['results']], 'g-o')
-    axes[0, 1].axvline(results['best_threshold'], color='r', linestyle='--', alpha=0.7, label=f"Best: {results['best_threshold']}")
-    axes[0, 1].set_title('Macro-averaged F1 vs Threshold')
-    axes[0, 1].set_xlabel('Threshold')
-    axes[0, 1].set_ylabel('Macro F1-Score')
-    axes[0, 1].legend()
-    axes[0, 1].grid(True)
+        # ROC Curve
+        axes[0, 1].plot(results['fpr'], results['tpr'], 'b-', linewidth=2, label=f'ROC (AUC = {results["roc_auc"]:.3f})')
+        axes[0, 1].plot([0, 1], [0, 1], 'r--', alpha=0.7, label='Random')
+        axes[0, 1].set_title('ROC Curve')
+        axes[0, 1].set_xlabel('False Positive Rate')
+        axes[0, 1].set_ylabel('True Positive Rate')
+        axes[0, 1].legend()
+        axes[0, 1].grid(True)
 
-    # Precision and Recall
-    axes[1, 0].plot(thresholds, [r['precision'] for r in results['results']], 'r-o', label='Precision')
-    axes[1, 0].plot(thresholds, [r['recall'] for r in results['results']], 'b-o', label='Recall')
-    axes[1, 0].set_title('Precision and Recall vs Threshold')
-    axes[1, 0].set_xlabel('Threshold')
-    axes[1, 0].set_ylabel('Score')
-    axes[1, 0].legend()
-    axes[1, 0].grid(True)
+        # Similarity distributions
+        pos_similarities = results['similarities'][results['labels'] == 1]
+        neg_similarities = results['similarities'][results['labels'] == 0]
 
-    # ROC Curve
-    axes[1, 1].plot(results['fpr'], results['tpr'], 'b-', linewidth=2, label=f'ROC (AUC = {results["roc_auc"]:.3f})')
-    axes[1, 1].plot([0, 1], [0, 1], 'r--', alpha=0.7, label='Random')
-    axes[1, 1].set_title('ROC Curve')
-    axes[1, 1].set_xlabel('False Positive Rate')
-    axes[1, 1].set_ylabel('True Positive Rate')
-    axes[1, 1].legend()
-    axes[1, 1].grid(True)
+        axes[1, 0].hist(pos_similarities, bins=30, alpha=0.7, label='Same Person', color='green')
+        axes[1, 0].hist(neg_similarities, bins=30, alpha=0.7, label='Different Person', color='red')
+        axes[1, 0].axvline(results['best_threshold'], color='blue', linestyle='--', label=f'Best Threshold: {results["best_threshold"]:.2f}')
+        axes[1, 0].set_title('Similarity Distribution')
+        axes[1, 0].set_xlabel('Cosine Similarity')
+        axes[1, 0].set_ylabel('Count')
+        axes[1, 0].legend()
+        axes[1, 0].grid(True, alpha=0.3)
 
-    plt.tight_layout()
-    plot_path = os.path.join(output_dir, 'performance_analysis.png')
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    logger.info(f"Performance plots saved to: {plot_path}")
-    plt.close()
+        # Confusion Matrix
+        cm = results['confusion_matrix']
+        im = axes[1, 1].imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+        axes[1, 1].set_title('Confusion Matrix')
+        axes[1, 1].set_xlabel('Predicted')
+        axes[1, 1].set_ylabel('Actual')
+        axes[1, 1].set_xticks([0, 1])
+        axes[1, 1].set_yticks([0, 1])
+        axes[1, 1].set_xticklabels(['Different', 'Same'])
+        axes[1, 1].set_yticklabels(['Different', 'Same'])
 
-    # 2. Similarity distribution plot
-    fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+        # Add text annotations
+        for i in range(2):
+            for j in range(2):
+                axes[1, 1].text(j, i, str(cm[i, j]), ha='center', va='center', fontsize=14)
 
-    # Separate similarities by ground truth
-    pos_similarities = [results['similarities'][i] for i in range(len(results['similarities'])) if results['labels'][i] == 1]
-    neg_similarities = [results['similarities'][i] for i in range(len(results['similarities'])) if results['labels'][i] == 0]
+        plt.tight_layout()
+        plot_path = os.path.join(output_dir, 'verification_analysis.png')
+        plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+        log_print(f"Verification plots saved to: {plot_path}", log_file)
+        plt.close()
 
-    # Histogram
-    axes[0].hist(pos_similarities, bins=50, alpha=0.7, label='Positive pairs', color='green')
-    axes[0].hist(neg_similarities, bins=50, alpha=0.7, label='Negative pairs', color='red')
-    axes[0].axvline(results['best_threshold'], color='blue', linestyle='--', label=f'Best threshold: {results["best_threshold"]}')
-    axes[0].set_title('Similarity Distribution')
-    axes[0].set_xlabel('Cosine Similarity')
-    axes[0].set_ylabel('Count')
-    axes[0].legend()
-    axes[0].grid(True, alpha=0.3)
+        log_print("All visualizations saved successfully", log_file)
 
-    # Box plot
-    axes[1].boxplot([pos_similarities, neg_similarities], labels=['Positive', 'Negative'])
-    axes[1].set_title('Similarity Distribution by Ground Truth')
-    axes[1].set_ylabel('Cosine Similarity')
-    axes[1].grid(True, alpha=0.3)
-
-    plt.tight_layout()
-    dist_plot_path = os.path.join(output_dir, 'similarity_distribution.png')
-    plt.savefig(dist_plot_path, dpi=300, bbox_inches='tight')
-    logger.info(f"Similarity distribution plots saved to: {dist_plot_path}")
-    plt.close()
-
-    logger.info("✅ All results saved successfully")
+    except Exception as e:
+        log_print(f"Warning: Could not create visualizations: {e}", log_file)
 
 def main():
-    parser = argparse.ArgumentParser(description='Test Face Recognition Model')
+    parser = argparse.ArgumentParser(description='Test Face Verification Model')
     parser.add_argument('--model_path', type=str, default='checkpoints/final_model.pt',
                         help='Path to the trained model')
-    parser.add_argument('--data_dir', type=str, default='Comsys-Hackathon5/Task_B/',
-                        help='Path to data directory')
+    parser.add_argument('--data_dir', type=str, default='Comsys-Hackathon5/Task_B/val',
+                        help='Path to test data directory (containing identity subfolders)')
     parser.add_argument('--embedding_dim', type=int, default=512,
                         help='Embedding dimension')
     parser.add_argument('--backbone', type=str, default='resnet18',
                         choices=['resnet18', 'resnet34', 'resnet50'],
                         help='Backbone architecture')
-    parser.add_argument('--num_queries', type=int, default=1000,
-                        help='Number of validation queries')
-    parser.add_argument('--output_dir', type=str, default='test_results/',
+    parser.add_argument('--num_positive', type=int, default=3,
+                        help='Number of positive samples per identity')
+    parser.add_argument('--num_negative', type=int, default=5,
+                        help='Number of negative samples per identity')
+    parser.add_argument('--output_dir', type=str, default='test_results_face/',
                         help='Directory to save test results')
     parser.add_argument('--batch_size', type=int, default=32,
-                        help='Batch size for embedding computation')
+                        help='Batch size for evaluation')
 
     args = parser.parse_args()
 
     # Setup
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     os.makedirs(args.output_dir, exist_ok=True)
-    log_file = os.path.join(args.output_dir, f'test_log_{timestamp}.txt')
+    log_file = os.path.join(args.output_dir, f'face_verification_log_{timestamp}.txt')
 
-    global logger
-    logger = setup_logging(log_file)
-
-    logger.info("=== FACE RECOGNITION MODEL TESTING ===")
-    logger.info(f"Model path: {args.model_path}")
-    logger.info(f"Data directory: {args.data_dir}")
-    logger.info(f"Output directory: {args.output_dir}")
+    log_print("=== FACE VERIFICATION MODEL TESTING ===", log_file)
+    log_print(f"Model path: {args.model_path}", log_file)
+    log_print(f"Data directory: {args.data_dir}", log_file)
+    log_print(f"Output directory: {args.output_dir}", log_file)
 
     # Log the official evaluation criteria
-    log_task_evaluation_criteria(logger)
+    log_task_evaluation_criteria(log_file)
 
     # Device
     if torch.backends.mps.is_available():
         device = torch.device('mps')
     else:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    logger.info(f"Using device: {device}")
+    log_print(f"Using device: {device}", log_file)
 
     # Load model
-    logger.info("Loading model...")
+    log_print("Loading model...", log_file)
     model = FaceEmbeddingModel(
         embedding_dim=args.embedding_dim,
         backbone=args.backbone,
@@ -451,51 +450,60 @@ def main():
     ).to(device)
 
     if not os.path.exists(args.model_path):
-        logger.error(f"Model file not found: {args.model_path}")
+        log_print(f"ERROR: Model file not found: {args.model_path}", log_file)
         return
 
     try:
         state_dict = torch.load(args.model_path, map_location=device)
         model.load_state_dict(state_dict)
-        logger.info("✅ Model loaded successfully")
+        log_print("Model loaded successfully", log_file)
     except Exception as e:
-        logger.error(f"Failed to load model: {e}")
+        log_print(f"ERROR: Failed to load model: {e}", log_file)
         return
 
-    # Load dataset
-    logger.info("Loading validation dataset...")
-    val_transform = get_transforms(train=False)
-    val_dataset = ValidationDataset(args.data_dir, transform=val_transform)
+    # Load verification dataset
+    log_print("Loading face verification dataset...", log_file)
 
-    logger.info(f"Gallery size: {len(val_dataset.gallery_images)}")
-    logger.info(f"Positive queries available: {len(val_dataset.positive_queries)}")
-    logger.info(f"Negative queries available: {len(val_dataset.negative_queries)}")
-
-    # Test thresholds
-    thresholds = [0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.975, 0.98, 0.99]
-
-    # Run comprehensive validation
-    start_time = time.time()
-    results = comprehensive_validation(
-        model, val_dataset, device, thresholds,
-        num_queries=args.num_queries, logger=logger
+    # Create verification dataset
+    verification_dataset = FaceVerificationDataset(
+        args.data_dir,
+        num_positive=args.num_positive,
+        num_negative=args.num_negative
     )
+
+    verification_loader = torch.utils.data.DataLoader(
+        verification_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=0  # Set to 0 to avoid multiprocessing issues
+    )
+
+    log_print(f"Verification dataset loaded", log_file)
+    log_print(f"Total verification pairs: {len(verification_dataset)}", log_file)
+    class_dist = verification_dataset.get_class_distribution()
+    log_print(f"Class distribution: Same={class_dist.get(1, 0)}, Different={class_dist.get(0, 0)}", log_file)
+
+    # Run face verification
+    start_time = time.time()
+
+    similarities, labels, identities = compute_face_verification(
+        model, verification_loader, device, log_file
+    )
+
+    # Analyze verification performance
+    results = analyze_verification_performance(similarities, labels, identities, log_file)
+
     test_time = time.time() - start_time
 
-    if results is None:
-        logger.error("❌ Testing failed!")
-        return
-
-    logger.info(f"\n🎉 Testing completed in {test_time:.1f} seconds")
-    logger.info(f"🏆 Best performance: Top-1 Accuracy={results['best_result']['top1_accuracy']:.4f}, Macro F1={results['best_result']['macro_f1']:.4f}")
-    logger.info(f"📊 ROC AUC: {results['roc_auc']:.4f}")
-    logger.info(f"🎯 Best threshold: {results['best_threshold']}")
+    log_print(f"\nFace verification completed in {test_time:.1f} seconds", log_file)
+    log_print(f"Best performance: F1={results['best_f1']:.4f} at threshold {results['best_threshold']:.2f}", log_file)
+    log_print(f"ROC AUC: {results['roc_auc']:.4f}", log_file)
 
     # Save results
-    save_results(results, args.output_dir, logger)
+    save_verification_results(results, args.output_dir, log_file)
 
-    logger.info(f"\n📝 Complete log saved to: {log_file}")
-    logger.info("✅ Testing completed successfully!")
+    log_print(f"\nComplete log saved to: {log_file}", log_file)
+    log_print("Face verification testing completed successfully!", log_file)
 
 if __name__ == "__main__":
     main()
